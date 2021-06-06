@@ -2,7 +2,7 @@ module Lexer (Token(..), tokenize) where
 
 import Data.Char ( isAlpha, isDigit, isSpace )
 
-data Operator = Plus | Minus | Times | Div | And | Or | LessThen | BranketA | BranketB
+data Operator = Plus | Minus | Times | Div | And | Or | LessThen | BracketA | BracketB
     | Semicolon | If | Then | Else | Not | True | False | Equal | Assignment
     deriving (Show, Eq)
 
@@ -13,8 +13,8 @@ operator c | c == "+"       = Plus
            | c == "-"       = Minus
            | c == "*"       = Times
            | c == "/"       = Div
-           | c == "("       = BranketA
-           | c == ")"       = BranketB
+           | c == "("       = BracketA
+           | c == ")"       = BracketB
            | c == ";"       = Semicolon
            | c == "<"       = LessThen
            | c == "&"       = And
