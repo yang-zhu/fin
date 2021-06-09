@@ -1,32 +1,35 @@
-module Lexer (Token(..), tokenize) where
+module Lexer (Token(..), Symbol(..), Keyword(..), tokenize) where
 
 import Data.Char ( isAlpha, isDigit, isSpace )
 
-data Operator = Plus | Minus | Times | Div | And | Or | LessThen | BracketA | BracketB
-    | Semicolon | If | Then | Else | Not | True | False | Equal | Assignment
+data Keyword = If | Then | Else | Not | True | False
     deriving (Show, Eq)
 
-data Token = NumberToken Integer | NameToken Operator | KeywordToken Operator deriving (Show, Eq)
+data Symbol = Plus | Minus | Times | Div | And | Or | LessThen | BracketA | BracketB | Semicolon | Equal | Assignment
+    deriving (Show, Eq)
 
-operator :: String -> Operator
-operator c | c == "+"       = Plus
-           | c == "-"       = Minus
-           | c == "*"       = Times
-           | c == "/"       = Div
-           | c == "("       = BracketA
-           | c == ")"       = BracketB
-           | c == ";"       = Semicolon
-           | c == "<"       = LessThen
-           | c == "&"       = And
-           | c == "|"       = Or
-           | c == "="       = Assignment
-           | c == "=="      = Equal
-           | c == "if"      = Lexer.If
-           | c == "then"    = Then
-           | c == "else"    = Else
-           | c == "not"     = Not
-           | c == "true"    = Lexer.True
-           | c == "false"   = Lexer.False
+data Token = NumberToken Integer | SymbolToken Symbol | KeywordToken Keyword
+    deriving (Show, Eq)
+
+operator :: String -> Token
+operator c | c == "+"       = SymbolToken Plus
+           | c == "-"       = SymbolToken Minus
+           | c == "*"       = SymbolToken Times
+           | c == "/"       = SymbolToken Div
+           | c == "("       = SymbolToken BracketA
+           | c == ")"       = SymbolToken BracketB
+           | c == ";"       = SymbolToken Semicolon
+           | c == "<"       = SymbolToken LessThen
+           | c == "&"       = SymbolToken And
+           | c == "|"       = SymbolToken Or
+           | c == "="       = SymbolToken Assignment
+           | c == "=="      = SymbolToken Equal
+           | c == "if"      = KeywordToken Lexer.If
+           | c == "then"    = KeywordToken Lexer.Then
+           | c == "else"    = KeywordToken Lexer.Else
+           | c == "not"     = KeywordToken Lexer.Not
+           | c == "true"    = KeywordToken Lexer.True
+           | c == "false"   = KeywordToken Lexer.False
 
 symbols :: [Char]
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
@@ -39,11 +42,9 @@ tokenize (c:s)
     | isSpace c = tokenize s
     | isAlpha c = let token = c : takeWhile isAlpha s 
                       rest =  dropWhile isAlpha s 
-                  in if token `elem` keywords
-                      then  KeywordToken (operator token) : tokenize rest
-                      else NameToken (operator token) : tokenize rest
+                  in operator token : tokenize rest
     | isDigit c = NumberToken (read(c : takeWhile isDigit s)) : tokenize (dropWhile isDigit s)
-    | c `elem` symbols = KeywordToken (operator [c]) : tokenize s
+    | c `elem` symbols = operator [c] : tokenize s
     | c == '=' = case s of
-        '=':s' -> KeywordToken Equal : tokenize s'
-        _ -> KeywordToken Assignment : tokenize s
+        '=':s' -> SymbolToken Equal : tokenize s'
+        _ -> SymbolToken Assignment : tokenize s
