@@ -6,6 +6,17 @@ import Data.Tree ( Tree )
 
 type Parser = [Token] -> [(Tree Token, [Token])]
 
+type Program = [Definition]
+data Definition = Definition Variable [Variable] Expression deriving Show
+data Expression = If Expression Expression Expression
+                | Binary Expression BinaryOp Expression
+                | Unary UnaryOp Expression
+                | FuncApp Expression Expression
+                | AtomicExpr AtomicExpression deriving Show
+data BinaryOp = And | Or | Equal | Smaller | Plus | Minus | Times | Divide deriving (Eq, Show)
+data UnaryOp = Not | Neg deriving (Eq, Show)
+data AtomicExpression = Var Variable | Number Integer | TruthValue Bool deriving Show
+type Variable = String
 
 -- helper functions
 
