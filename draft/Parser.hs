@@ -53,21 +53,29 @@ parseExpr8 ts = let
     in (foldl FuncApp e es, ts')
 
 
+-- Parses unary minus
+parseExpr7 :: [Token] -> (Expression, [Token])
+parseExpr7 (KeywordToken "-" : ts) = let
+    (e, rest) = parseExpr8 ts
+    in (Unary Neg e, rest)
+parseExpr7 ts = parseExpr8 ts
+
+
 parseMultiplications :: [Token] -> ([Expression], [Token])
 parseMultiplications (KeywordToken "*" : ts) = 
     let 
-    (e, ts') = parseExpr8 ts
+    (e, ts') = parseExpr7 ts
     (es, rest) = parseMultiplications ts'
     in (e:es, rest)
 parseMultiplications ts = ([], ts)
 
 -- Parses * and / operators
-parseExpr7 :: [Token] -> (Expression, [Token])
-parseExpr7 ts = let
-    (e, ts') = parseExpr8 ts
+parseExpr6 :: [Token] -> (Expression, [Token])
+parseExpr6 ts = let
+    (e, ts') = parseExpr7 ts
     in case ts' of
         (KeywordToken "/" : ts') -> let 
-            (divisor, rest) = parseExpr8 ts'
+            (divisor, rest) = parseExpr7 ts'
             in (Binary e Divide divisor, rest)
         _ -> let
             (es, rest) = parseMultiplications ts'
@@ -77,30 +85,22 @@ parseExpr7 ts = let
 parseAdditions :: [Token] -> ([Expression], [Token])
 parseAdditions (KeywordToken "+" : ts) = 
     let 
-    (e, ts') = parseExpr7 ts
+    (e, ts') = parseExpr6 ts
     (es, rest) = parseAdditions ts'
     in (e:es, rest)
 parseAdditions ts = ([], ts)
 
 -- Parses + and - operators
-parseExpr6 :: [Token] -> (Expression, [Token])
-parseExpr6 ts = let
-    (e, ts') = parseExpr7 ts
+parseExpr5 :: [Token] -> (Expression, [Token])
+parseExpr5 ts = let
+    (e, ts') = parseExpr6 ts
     in case ts' of
         (KeywordToken "-" : ts') -> let 
-            (subtrahend, rest) = parseExpr7 ts'
+            (subtrahend, rest) = parseExpr6 ts'
             in (Binary e Minus subtrahend, rest)
         _ -> let
             (es, rest) = parseAdditions ts'
             in (foldl (\x y -> Binary x Plus y) e es, rest)
-
-
--- Parses unary minus
-parseExpr5 :: [Token] -> (Expression, [Token])
-parseExpr5 (KeywordToken "-" : ts) = let
-    (e, rest) = parseExpr6 ts
-    in (Unary Neg e, rest)
-parseExpr5 ts = parseExpr6 ts
 
 
 -- Parses == and < operators
