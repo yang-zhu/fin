@@ -39,4 +39,4 @@ translateProgram = foldl add1Definition MachineState{pc=0, code=[
     Reset, Pushfun "main", Call, Halt,
     Pushparam 2, Unwind, Call, Pushparam 4, Unwind, Call, Operator2, UpdateOp, Return,
     Pushparam 1, Unwind, Call, OperatorIf, Unwind, Call, UpdateOp, Return,
-    Pushparam 2, Unwind, Operator1, UpdateOp, Return], stack=[], heap=[]}
+    Pushparam 2, Unwind, Call, Operator1, UpdateOp, Return], stack=[], heap=[]}
