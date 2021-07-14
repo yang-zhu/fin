@@ -68,10 +68,10 @@ execInstruction Operator2 ms@MachineState{stack=HeapAddr sndCell : HeapAddr fstC
     VAL v1 = value fstCell h
     VAL v2 = value sndCell h
     evalOpExpr = case op of
-        Equal -> let 
-            IntValue b1 = v1
-            IntValue b2 = v2 
-            in BoolValue $ b1 == b2
+        Equal -> case (v1, v2) of
+            (IntValue b1, IntValue b2) -> BoolValue $ b1 == b2
+            (BoolValue b1, BoolValue b2) -> BoolValue $ b1 == b2
+            _ -> BoolValue False
         Smaller -> let
             IntValue b1 = v1
             IntValue b2 = v2 
