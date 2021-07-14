@@ -10,7 +10,7 @@ data Expression = If Expression Expression Expression
                 | Unary UnaryOp Expression
                 | FuncApp Expression Expression
                 | AtomicExpr AtomicExpression deriving Show
-data BinaryOp = And | Or | Equal | Smaller | Plus | Minus | Times | Divide deriving (Eq, Show)
+data BinaryOp = Equal | Smaller | Plus | Minus | Times | Divide deriving (Eq, Show)
 data UnaryOp = Not | Neg deriving (Eq, Show)
 data AtomicExpression = Var Variable | Number Integer | TruthValue Bool deriving Show
 type Variable = String
@@ -132,7 +132,7 @@ parseExpr2 ts = let
     in case ts' of
         (KeywordToken "&" : ts') -> let
             (e2, rest) = parseExpr2 ts'
-            in (Binary e1 And e2, rest)
+            in (If e1 e2 (AtomicExpr $ TruthValue False), rest)
         _ -> (e1, ts')
 
 
@@ -143,7 +143,7 @@ parseExpr1 ts = let
     in case ts' of
         (KeywordToken "|" : ts') -> let
             (e2, rest) = parseExpr1 ts'
-            in (Binary e1 Or e2, rest)
+            in (If e1 (AtomicExpr $ TruthValue True) e2, rest)
         _ -> (e1, ts')
 
 
