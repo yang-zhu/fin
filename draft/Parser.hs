@@ -5,9 +5,7 @@ import Lexer ( Token(..) )
 
 type Program = [Definition]
 data Definition = Definition Variable [Variable] Expression deriving Show
-data LocalDefinition = LocalDef Variable Expression
-data Expression = Let [LocalDefinition] Expression
-                | If Expression Expression Expression
+data Expression = If Expression Expression Expression
                 | Binary Expression BinaryOp Expression
                 | Unary UnaryOp Expression
                 | FuncApp Expression Expression
@@ -158,10 +156,6 @@ parseExpr0 (KeywordToken "if" : ts1) = let
     in (If e1 e2 e3, rest)
 parseExpr0 ts = parseExpr1 ts
 
-
--- Parses local definitions
-parseLocalDefinition :: [Token] -> (LocalDefinition, [Token])
-parseLocalDefinition 
 
 -- Parses definitions
 parseDefinition :: [Token] -> (Definition, [Token])
