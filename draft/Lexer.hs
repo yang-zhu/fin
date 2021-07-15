@@ -3,10 +3,10 @@ module Lexer (Token(..), tokenize) where
 import Data.Char ( isAlpha, isDigit, isSpace )
 
 
-data Token = NumberToken Integer | NameToken String | KeywordToken String deriving Eq
+data Token = NumberToken Integer | NameToken String | KeywordToken String deriving (Eq, Show)
 
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
-keywords = ["if", "then", "else", "not", "true", "false"]
+keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
 
 tokenize :: String -> [Token]
 tokenize "" = []

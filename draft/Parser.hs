@@ -5,7 +5,9 @@ import Lexer ( Token(..) )
 
 type Program = [Definition]
 data Definition = Definition Variable [Variable] Expression deriving Show
-data Expression = If Expression Expression Expression
+data LocalDefinition = LocalDef Variable Expression deriving Show
+data Expression = Let [LocalDefinition] Expression
+                | If Expression Expression Expression
                 | Binary Expression BinaryOp Expression
                 | Unary UnaryOp Expression
                 | FuncApp Expression Expression
@@ -154,7 +156,20 @@ parseExpr0 (KeywordToken "if" : ts1) = let
     (e2, KeywordToken "else" : ts3) = parseExpr0 ts2
     (e3, rest) = parseExpr0 ts3
     in (If e1 e2 e3, rest)
+parseExpr0 (KeywordToken "let" : ts1) = let
+    (localDefs, KeywordToken "in" : ts2) = parseLocalDefinitions ts1
+    (expr, rest) = parseExpr0 $ ts2
+    in (Let localDefs expr, rest)
 parseExpr0 ts = parseExpr1 ts
+
+
+-- Parses local definitions
+parseLocalDefinitions :: [Token] -> ([LocalDefinition], [Token])
+parseLocalDefinitions (NameToken t : KeywordToken "=" : ts) = case parseExpr0 ts of
+    (expr, KeywordToken ";" : ts') -> let
+        (definitions, rest) = parseLocalDefinitions ts'
+        in (LocalDef t expr : definitions, rest)
+    (expr, ts') -> ([LocalDef t expr], ts')
 
 
 -- Parses definitions
@@ -162,7 +177,7 @@ parseDefinition :: [Token] -> (Definition, [Token])
 parseDefinition (NameToken t : ts) =
     let
     vs = takeWhile (/= KeywordToken "=") ts
-    (KeywordToken "=" : ts') = dropWhile (/= KeywordToken "=") ts
+    KeywordToken "=" : ts' = dropWhile (/= KeywordToken "=") ts
     (e, rest) = parseExpr0 ts'
     in (Definition t [ v | NameToken v <- vs] e, rest)
 
