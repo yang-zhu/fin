@@ -1,6 +1,8 @@
-module Parser (Program, Definition(..), Expression(..), BinaryOp(..), UnaryOp(..), AtomicExpression(..), Variable, parseProgram) where
+module Parser (Program, Definition(..), LocalDefinition(..), Expression(..), BinaryOp(..), UnaryOp(..), AtomicExpression(..), Variable, parseProgram) where
 
 import Lexer ( Token(..) )
+
+import Debug.Trace( trace )
 
 
 type Program = [Definition]
@@ -149,7 +151,7 @@ parseExpr1 ts = let
         _ -> (e1, ts')
 
 
--- Parses if-then-else expression
+-- Parses if-then-else and let expressions
 parseExpr0 :: [Token] -> (Expression, [Token])
 parseExpr0 (KeywordToken "if" : ts1) = let
     (e1, KeywordToken "then" : ts2) = parseExpr0 ts1

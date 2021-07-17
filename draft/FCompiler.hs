@@ -5,6 +5,7 @@ import Parser
       Program,
       AtomicExpression(Var, Number, TruthValue),
       Expression(..),
+      LocalDefinition(..),
       Definition(..) )
 import MF
     ( MachineState(..),
@@ -19,7 +20,12 @@ translateDef (Definition f args body) = translateKons body pos ++ [UpdateFun (le
     pos = zip args [1..]
 
 
+translateLet :: [LocalDefinition] -> Expression -> [(Variable, Int)] -> [Instruction]
+translateLet [] e pos = translateKons e pos
+translateLet (LocalDef v e : lDefs) expr pos = translateKons e pos ++ [Alloc, Makeapp] ++ translateLet lDefs expr ((v,-1) : (map (\(x,y) -> (x, y+1)) pos))
+
 translateKons :: Expression -> [(Variable, Int)] -> [Instruction]
+translateKons (Let localDefs expr) pos = translateLet localDefs expr pos ++ [SlideLet (length localDefs)]
 translateKons (FuncApp e1 e2) pos = translateKons e2 pos ++ translateKons e1 (map (\(x,y) -> (x, y+1)) pos) ++ [Makeapp]
 translateKons (Unary op e) pos = translateKons e pos ++ [Pushpre (UnaryOperator op), Makeapp]
 translateKons (Binary e1 op e2) pos = translateKons e2 pos ++ translateKons e1 (map (\(x,y) -> (x, y+1)) pos) ++ [Pushpre (BinaryOperator op), Makeapp, Makeapp]

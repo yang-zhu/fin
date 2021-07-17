@@ -6,12 +6,12 @@ import Debug.Trace ( trace )
 
 
 data Value = IntValue Integer | BoolValue Bool deriving (Eq, Show)
-data Instruction = Reset | Pushfun String | Pushval Value | Pushparam Int | Makeapp | Slide Int | Unwind | Call | Return | Pushpre Operator | Operator1 | Operator2 | OperatorIf | UpdateFun Int | UpdateOp | Halt deriving (Eq, Show)
+data Instruction = Reset | Pushfun String | Pushval Value | Pushparam Int | Makeapp | Slide Int | Unwind | Call | Return | Pushpre Operator | Operator1 | Operator2 | OperatorIf | UpdateFun Int | UpdateOp | Alloc | SlideLet Int | Halt deriving (Eq, Show)
 type CodeAddr = Int
 type HeapAddr = Int
 data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr | Operator Operator deriving Show
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
-data HeapCell = DEF Int CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr deriving Show
+data HeapCell = DEF Int CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving Show
 type GlobalFunction = (String, HeapAddr)
 -- We model the stack as a list where the first element is the top of the stack
 data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: [HeapCell], global :: [GlobalFunction]}
@@ -104,3 +104,5 @@ execInstruction (UpdateFun n) ms@MachineState{stack=HeapAddr top : s, heap=h} = 
     HeapAddr replaced = s!!(n+1)
     in setAt h replaced (IND top)}
 execInstruction UpdateOp ms@MachineState{stack=HeapAddr res : ra : HeapAddr replaced : cells, heap=h} = ms{stack=HeapAddr replaced : ra : cells , heap=setAt h replaced (h!!res)}
+execInstruction Alloc ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [UNINIT]}
+execInstruction (SlideLet n) ms@MachineState{stack=resCell : cells} = ms{stack=resCell : drop n cells}
