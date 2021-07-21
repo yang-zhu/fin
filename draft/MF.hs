@@ -6,7 +6,7 @@ import Debug.Trace ( trace )
 
 
 data Value = IntValue Integer | BoolValue Bool deriving (Eq, Show)
-data Instruction = Reset | Pushfun String | Pushval Value | Pushparam Int | Makeapp | Slide Int | Unwind | Call | Return | Pushpre Operator | Operator1 | Operator2 | OperatorIf | UpdateFun Int | UpdateOp | Alloc | SlideLet Int | Halt deriving (Eq, Show)
+data Instruction = Reset | Pushfun String | Pushval Value | Pushparam Int | Makeapp | Slide Int | Unwind | Call | Return | Pushpre Operator | Operator1 | Operator2 | OperatorIf | UpdateFun Int | UpdateOp | UpdateLet Int | Alloc | SlideLet Int | Halt deriving (Eq, Show)
 type CodeAddr = Int
 type HeapAddr = Int
 data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr | Operator Operator deriving Show
@@ -26,7 +26,7 @@ runMF ms@MachineState{pc=p, code=c} = let
         -- for debugging: else runMF $ trace (show (stack ms) ++ "\n" ++ show (heap ms) ++ "\n" ++ show i) (execInstruction i ms{pc=p+1})
 
 
-setAt :: [HeapCell] -> Int -> HeapCell -> [HeapCell]
+setAt :: [HeapCell] -> HeapAddr -> HeapCell -> [HeapCell]
 setAt (fst:cells) 0 newCell = newCell : cells
 setAt (fst:cells) i newCell = fst : setAt cells (i-1) newCell
 
@@ -104,5 +104,10 @@ execInstruction (UpdateFun n) ms@MachineState{stack=HeapAddr top : s, heap=h} = 
     HeapAddr replaced = s!!(n+1)
     in setAt h replaced (IND top)}
 execInstruction UpdateOp ms@MachineState{stack=HeapAddr res : ra : HeapAddr replaced : cells, heap=h} = ms{stack=HeapAddr replaced : ra : cells , heap=setAt h replaced (h!!res)}
+-- replaces the right child of the dummy APP-node with its expression graph and pops the expression node from the stack
+execInstruction (UpdateLet n) ms@MachineState{stack=HeapAddr res : cells, heap=h} = ms{stack=cells, heap=let
+    HeapAddr appAddr = cells!!n
+    APP _ replaced = value appAddr h
+    in setAt h replaced (IND res)}
 execInstruction Alloc ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [UNINIT]}
 execInstruction (SlideLet n) ms@MachineState{stack=resCell : cells} = ms{stack=resCell : drop n cells}
