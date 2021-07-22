@@ -13,6 +13,7 @@ import MF
       Operator(IfOperator, UnaryOperator, BinaryOperator),
       Instruction(..),
       Value(BoolValue, IntValue) )
+import qualified Data.Map.Strict as Map
 
 
 translateDef :: Definition -> [Instruction]
@@ -43,11 +44,11 @@ translateKons (AtomicExpr (Var v)) pos = case lookup v pos of
 
 
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState{code=c, heap=h, global=g} d@(Definition f args _) = ms{code=c ++ translateDef d, heap=h ++ [DEF (length args) (length c)], global=g ++ [(f, length h)]}
+add1Definition ms@MachineState{code=c, heap=h, global=g} d@(Definition f args _) = ms{code=c ++ translateDef d, heap=h ++ [DEF (length c)], global=Map.insert f (length h) g}
 
 translateProgram :: Program -> MachineState
 translateProgram = foldl add1Definition MachineState{pc=0, code=[
     Reset, Pushfun "main", Call, Halt,
     Pushparam 2, Unwind, Call, Pushparam 4, Unwind, Call, Operator2, UpdateOp, Return,
     Pushparam 1, Unwind, Call, OperatorIf, Unwind, Call, UpdateOp, Return,
-    Pushparam 2, Unwind, Call, Operator1, UpdateOp, Return], stack=[], heap=[], global=[]}
+    Pushparam 2, Unwind, Call, Operator1, UpdateOp, Return], stack=[], heap=[], global=Map.empty}

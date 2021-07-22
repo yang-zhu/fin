@@ -3,6 +3,7 @@ module MF (Value(..), Instruction(..), CodeAddr, HeapAddr, StackCell(..), Operat
 import Parser ( UnaryOp(..), BinaryOp(..) )
 import Data.List ( findIndex )
 import Debug.Trace ( trace )
+import qualified Data.Map.Strict as Map
 
 
 data Value = IntValue Integer | BoolValue Bool deriving (Eq, Show)
@@ -11,14 +12,13 @@ type CodeAddr = Int
 type HeapAddr = Int
 data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr | Operator Operator deriving Show
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
-data HeapCell = DEF Int CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving Show
-type GlobalFunction = (String, HeapAddr)
+data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving Show
 -- We model the stack as a list where the first element is the top of the stack
-data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: [HeapCell], global :: [GlobalFunction]}
+data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: [HeapCell], global :: Map.Map String HeapAddr}
 
 
 runMF :: MachineState -> MachineState
-runMF ms@MachineState{pc=p, code=c} = let
+runMF ms@MachineState{pc=p, code=c, global=g} = let
     i = c!!p
     in if i == Halt
         then ms
@@ -38,7 +38,7 @@ value addr1 heap = case heap!!addr1 of
 execInstruction :: Instruction -> MachineState -> MachineState
 execInstruction Reset ms = ms{stack=[]}
 execInstruction (Pushfun f) ms@MachineState{stack=s, heap=h, global=g} = ms{stack=let
-    Just hAddr = lookup f g
+    Just hAddr = Map.lookup f g
     in HeapAddr hAddr : s}
 execInstruction (Pushval v) ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [VAL v]}
 execInstruction (Pushparam n) ms@MachineState{stack=s, heap=h} = ms{stack=let
@@ -51,7 +51,7 @@ execInstruction Unwind ms@MachineState{pc=p, stack=s@(HeapAddr appCell : cells),
     APP addr1 _ -> ms{pc=p-1, stack=HeapAddr addr1 : s}
     _ -> ms
 execInstruction Call ms@MachineState{pc=p, stack=s@(HeapAddr top : cells), heap=h} = case value top h of
-    DEF _ addr -> ms{pc=addr, stack=CodeAddr p : s}
+    DEF addr -> ms{pc=addr, stack=CodeAddr p : s}
     PRE uop@(UnaryOperator op) -> ms{pc=21, stack=Operator uop : CodeAddr p : s}
     PRE bop@(BinaryOperator op) -> ms{pc=4, stack=Operator bop : CodeAddr p : s}
     PRE IfOperator -> ms{pc=13, stack=CodeAddr p : s}
