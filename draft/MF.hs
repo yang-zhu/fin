@@ -4,6 +4,8 @@ import Parser ( UnaryOp(..), BinaryOp(..) )
 import Data.List ( findIndex )
 import Debug.Trace ( trace )
 import qualified Data.Map.Strict as Map
+import qualified Data.Sequence as Sequence
+import Data.Sequence ( Seq, (|>), update, index)
 
 
 data Value = IntValue Integer | BoolValue Bool deriving (Eq, Show)
@@ -14,7 +16,7 @@ data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr | Operator Operator deriv
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
 data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving Show
 -- We model the stack as a list where the first element is the top of the stack
-data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: [HeapCell], global :: Map.Map String HeapAddr}
+data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr}
 
 
 runMF :: MachineState -> MachineState
@@ -26,12 +28,12 @@ runMF ms@MachineState{pc=p, code=c, global=g} = let
         -- for debugging: else runMF $ trace (show (stack ms) ++ "\n" ++ show (heap ms) ++ "\n" ++ show i) (execInstruction i ms{pc=p+1})
 
 
-setAt :: [HeapCell] -> HeapAddr -> HeapCell -> [HeapCell]
-setAt (fst:cells) 0 newCell = newCell : cells
-setAt (fst:cells) i newCell = fst : setAt cells (i-1) newCell
+-- setAt :: [HeapCell] -> HeapAddr -> HeapCell -> [HeapCell]
+-- setAt (fst:cells) 0 newCell = newCell : cells
+-- setAt (fst:cells) i newCell = fst : setAt cells (i-1) newCell
 
-value :: HeapAddr -> [HeapCell] -> HeapCell
-value addr1 heap = case heap!!addr1 of
+value :: HeapAddr -> Seq HeapCell -> HeapCell
+value addr1 heap = case heap `index` addr1 of
     IND addr2 -> value addr2 heap
     anything -> anything
 
@@ -40,12 +42,12 @@ execInstruction Reset ms = ms{stack=[]}
 execInstruction (Pushfun f) ms@MachineState{stack=s, heap=h, global=g} = ms{stack=let
     Just hAddr = Map.lookup f g
     in HeapAddr hAddr : s}
-execInstruction (Pushval v) ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [VAL v]}
+execInstruction (Pushval v) ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h |> VAL v}
 execInstruction (Pushparam n) ms@MachineState{stack=s, heap=h} = ms{stack=let
     HeapAddr hCellInd = s!!(n+1)
     APP _ arg2 = value hCellInd h
     in HeapAddr arg2 : s} 
-execInstruction Makeapp ms@MachineState{stack=HeapAddr fst : HeapAddr snd : cells, heap=h} = ms{stack=HeapAddr (length h) : cells, heap=h ++ [APP fst snd]}
+execInstruction Makeapp ms@MachineState{stack=HeapAddr fst : HeapAddr snd : cells, heap=h} = ms{stack=HeapAddr (length h) : cells, heap=h |> APP fst snd}
 execInstruction (Slide n) ms@MachineState{stack=res: ra: cells} = ms{stack=res : ra : drop n cells}
 execInstruction Unwind ms@MachineState{pc=p, stack=s@(HeapAddr appCell : cells), heap=h} = case value appCell h of
     APP addr1 _ -> ms{pc=p-1, stack=HeapAddr addr1 : s}
@@ -57,13 +59,13 @@ execInstruction Call ms@MachineState{pc=p, stack=s@(HeapAddr top : cells), heap=
     PRE IfOperator -> ms{pc=13, stack=CodeAddr p : s}
     _-> ms
 execInstruction Return ms@MachineState{stack=res : CodeAddr ra: cells} = ms{pc=ra, stack=res:cells}
-execInstruction (Pushpre op) ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [PRE op]}
+execInstruction (Pushpre op) ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h |> PRE op}
 execInstruction Operator1 ms@MachineState{stack=HeapAddr resCell : (Operator (UnaryOperator op)) : ra : cells, heap=h} = ms{stack=HeapAddr (length h) : ra : drop 1 cells, heap=let
     VAL v = value resCell h
     evalOpExpr = case op of
         Not -> let BoolValue b = v in BoolValue $ not b
         Neg -> let IntValue x = v in IntValue $ negate x
-    in h ++ [VAL evalOpExpr]}
+    in h |> VAL evalOpExpr}
 execInstruction Operator2 ms@MachineState{stack=HeapAddr sndCell : HeapAddr fstCell : (Operator (BinaryOperator op)) : ra : cells, heap=h} = ms{stack=HeapAddr (length h) : ra : drop 2 cells, heap=let
     VAL v1 = value fstCell h
     VAL v2 = value sndCell h
@@ -92,7 +94,7 @@ execInstruction Operator2 ms@MachineState{stack=HeapAddr sndCell : HeapAddr fstC
             IntValue b1 = v1
             IntValue b2 = v2 
             in IntValue $ b1 `div` b2
-        in h ++ [VAL evalOpExpr]}
+        in h |> VAL evalOpExpr}
 execInstruction OperatorIf ms@MachineState{stack=HeapAddr condition : ra : _ : _ : HeapAddr thenCell : HeapAddr elseCell : cells, heap=h} = ms{stack=let
     VAL (BoolValue cond) = value condition h
     APP _ thenBranch = value thenCell h
@@ -102,12 +104,12 @@ execInstruction OperatorIf ms@MachineState{stack=HeapAddr condition : ra : _ : _
         else HeapAddr elseBranch : ra : HeapAddr elseCell : cells}
 execInstruction (UpdateFun n) ms@MachineState{stack=HeapAddr top : s, heap=h} = ms{heap=let
     HeapAddr replaced = s!!(n+1)
-    in setAt h replaced (IND top)}
-execInstruction UpdateOp ms@MachineState{stack=HeapAddr res : ra : HeapAddr replaced : cells, heap=h} = ms{stack=HeapAddr replaced : ra : cells , heap=setAt h replaced (h!!res)}
+    in update replaced (IND top) h}
+execInstruction UpdateOp ms@MachineState{stack=HeapAddr res : ra : HeapAddr replaced : cells, heap=h} = ms{stack=HeapAddr replaced : ra : cells , heap=update replaced (h `index` res) h}
 -- replaces the right child of the dummy APP-node with its expression graph and pops the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState{stack=HeapAddr res : cells, heap=h} = ms{stack=cells, heap=let
     HeapAddr appAddr = cells!!n
     APP _ replaced = value appAddr h
-    in setAt h replaced (IND res)}
-execInstruction Alloc ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h ++ [UNINIT]}
+    in update replaced (IND res) h}
+execInstruction Alloc ms@MachineState{stack=s, heap=h} = ms{stack=HeapAddr (length h) : s, heap=h |> UNINIT}
 execInstruction (SlideLet n) ms@MachineState{stack=resCell : cells} = ms{stack=resCell : drop n cells}
