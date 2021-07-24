@@ -97,10 +97,10 @@ translateProgram =
             Call,
             Halt,
             -- binary operators
-            Pushparam 2,
+            Pushparam 1,
             Unwind,
             Call,
-            Pushparam 4,
+            Pushparam 3,
             Unwind,
             Call,
             Operator2,
@@ -116,7 +116,7 @@ translateProgram =
             UpdateOp,
             Return,
             -- unary operators
-            Pushparam 2,
+            Pushparam 1,
             Unwind,
             Call,
             Operator1,

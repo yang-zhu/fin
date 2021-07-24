@@ -73,8 +73,8 @@ execInstruction Unwind ms@MachineState {pc = p, stack = s@(HeapAddr top : cells)
 execInstruction Call ms@MachineState {pc = p, stack = s@(HeapAddr top : cells), heap = h} =
   case value top h of
     DEF addr -> ms {pc = addr, stack = CodeAddr p : s}
-    PRE uop@(UnaryOperator op) -> ms {pc = 21, stack = Operator uop : CodeAddr p : s}
-    PRE bop@(BinaryOperator op) -> ms {pc = 4, stack = Operator bop : CodeAddr p : s}
+    PRE uop@(UnaryOperator op) -> ms {pc = 21, stack = CodeAddr p : s}
+    PRE bop@(BinaryOperator op) -> ms {pc = 4, stack = CodeAddr p : s}
     PRE IfOperator -> ms {pc = 13, stack = CodeAddr p : s}
     _ -> ms
 execInstruction Return ms@MachineState {stack = res : CodeAddr ra : cells} =
@@ -87,26 +87,28 @@ execInstruction (Pushpre op) ms@MachineState {stack = s, heap = h} =
     { stack = HeapAddr (length h) : s,
       heap = h |> PRE op
     }
-execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : (Operator (UnaryOperator op)) : ra : cells, heap = h} =
+execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapAddr opAddr : cells, heap = h} =
   ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell is removed (drop 1 cells)
-      stack = HeapAddr (length h) : ra : drop 1 cells,
+    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell is removed
+      stack = HeapAddr (length h) : ra : cells,
       heap = h |> VAL evalOpExpr
     }
   where
     VAL v = value operand h
+    PRE (UnaryOperator op) = value opAddr h
     evalOpExpr = case op of
       Not -> let BoolValue b = v in BoolValue $ not b
       Neg -> let IntValue x = v in IntValue $ negate x
-execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : (Operator (BinaryOperator op)) : ra : cells, heap = h} =
+execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap = h} =
   ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed (drop 2 cells)
-      stack = HeapAddr (length h) : ra : drop 2 cells,
+    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed
+      stack = HeapAddr (length h) : ra : drop 1 cells,
       heap = h |> VAL evalOpExpr
     }
   where
     VAL v1 = value fstOperand h
     VAL v2 = value sndOperand h  -- v1 and v2 could be either intergers or truth values
+    PRE (BinaryOperator op) = value opAddr h
     evalOpExpr = case op of
       Equal -> case (v1, v2) of
         (IntValue b1, IntValue b2) -> BoolValue $ b1 == b2
