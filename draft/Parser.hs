@@ -1,4 +1,4 @@
-module Parser (Program, Definition (..), LocalDefinition (..), Expression (..), BinaryOp (..), UnaryOp (..), AtomicExpression (..), Variable, parseProgram) where
+module Parser (Program, Definition (..), LocalDefinition (..), Expression (..), BinaryOp (..), UnaryOp (..), Variable, parseProgram) where
 
 import Debug.Trace (trace)
 import Lexer (Token (..))
@@ -15,21 +15,20 @@ data Expression
   | Binary Expression BinaryOp Expression
   | Unary UnaryOp Expression
   | FuncApp Expression Expression
-  | AtomicExpr AtomicExpression
+  | Var Variable
+  | Number Integer
+  | TruthValue Bool
   deriving (Show)
 
 data BinaryOp = Equal | Smaller | Plus | Minus | Times | Divide deriving (Eq, Show)
 
 data UnaryOp = Not | Neg deriving (Eq, Show)
 
-data AtomicExpression = Var Variable | Number Integer | TruthValue Bool deriving (Show)
-
 type Variable = String
 
 -- Grammar:
--- AtomicExpression ::= Variable | Literal
--- Expression9 ::= ( Expression0 ) | AtomicExpression
--- Expression8 ::= Expression9 {Expression9}
+-- AtomicExpression ::= Variable | Literal | ( Expresion0 )
+-- Expression8 ::= AtomicExpression {AtomicExpression}
 -- Expression7 ::= [-] Expression8
 -- Expression6 ::= Expression7 RestExpression6
 -- RestExpression6 ::= / Expression7 | {* Expression7}
@@ -49,20 +48,15 @@ type Variable = String
 -- Program := Definition; {Definition ;} 
 
 
-parseAtomicExpr :: [Token] -> (AtomicExpression, [Token])
+-- Parse atomic expressions
+parseAtomicExpr :: [Token] -> (Expression, [Token])
 parseAtomicExpr (NumberToken t : ts) = (Number t, ts)
 parseAtomicExpr (NameToken t : ts) = (Var t, ts)
 parseAtomicExpr (KeywordToken "true" : ts) = (TruthValue True, ts)
 parseAtomicExpr (KeywordToken "false" : ts) = (TruthValue False, ts)
-
--- Parse parentheses and atomic expressions
-parseExpr9 :: [Token] -> (Expression, [Token])
-parseExpr9 (KeywordToken "(" : ts) =
+parseAtomicExpr (KeywordToken "(" : ts) =
   let (e, KeywordToken ")" : ts') = parseExpr0 ts
    in (e, ts')
-parseExpr9 ts =
-  let (e, ts') = parseAtomicExpr ts
-   in (AtomicExpr e, ts')
 
 startSymbols = ["(", "true", "false"]
 
@@ -71,20 +65,20 @@ isExprStart (KeywordToken t) = t `elem` startSymbols
 isExprStart (NumberToken t) = True
 isExprStart (NameToken t) = True
 
-parseManyExpr9 :: [Token] -> ([Expression], [Token])
-parseManyExpr9 [] = ([], [])
-parseManyExpr9 tok@(t : ts) =
+parseManyAtomicExpr :: [Token] -> ([Expression], [Token])
+parseManyAtomicExpr [] = ([], [])
+parseManyAtomicExpr tok@(t : ts) =
   if isExprStart t
     then
-      let (e, ts') = parseExpr9 tok
-          (es, rest) = parseManyExpr9 ts'
+      let (e, ts') = parseAtomicExpr tok
+          (es, rest) = parseManyAtomicExpr ts'
        in (e : es, rest)
     else ([], tok)
 
 -- Parse function applications
 parseExpr8 :: [Token] -> (Expression, [Token])
 parseExpr8 ts =
-  let (e : es, ts') = parseManyExpr9 ts
+  let (e : es, ts') = parseManyAtomicExpr ts
    in (foldl FuncApp e es, ts')
 
 -- Parse unary minus
@@ -160,7 +154,7 @@ parseExpr2 ts =
    in case ts' of
         (KeywordToken "&" : ts') ->
           let (e2, rest) = parseExpr2 ts'
-           in (If e1 e2 (AtomicExpr $ TruthValue False), rest)
+           in (If e1 e2 (TruthValue False), rest)
         _ -> (e1, ts')
 
 -- Parse Or Operator
@@ -171,7 +165,7 @@ parseExpr1 ts =
    in case ts' of
         (KeywordToken "|" : ts') ->
           let (e2, rest) = parseExpr1 ts'
-           in (If e1 (AtomicExpr $ TruthValue True) e2, rest)
+           in (If e1 (TruthValue True) e2, rest)
         _ -> (e1, ts')
 
 -- Parse if-then-else and let expressions

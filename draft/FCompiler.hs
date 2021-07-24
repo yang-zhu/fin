@@ -11,8 +11,7 @@ import MF
     Value (BoolValue, IntValue),
   )
 import Parser
-  ( AtomicExpression (Number, TruthValue, Var),
-    Definition (..),
+  ( Definition (..),
     Expression (..),
     LocalDefinition (..),
     Program,
@@ -67,9 +66,9 @@ translateExpr (If e1 e2 e3) pos =
     ++ translateExpr e2 (map (\(x, y) -> (x, y + 1)) pos)
     ++ translateExpr e1 (map (\(x, y) -> (x, y + 2)) pos)
     ++ [Pushpre IfOperator, Makeapp, Makeapp, Makeapp]
-translateExpr (AtomicExpr (Number i)) pos = [Pushval (IntValue i)]
-translateExpr (AtomicExpr (TruthValue b)) pos = [Pushval (BoolValue b)]
-translateExpr (AtomicExpr (Var v)) pos =
+translateExpr (Number i) pos = [Pushval (IntValue i)]
+translateExpr (TruthValue b) pos = [Pushval (BoolValue b)]
+translateExpr (Var v) pos =
   case lookup v pos of
     Just i -> [Pushparam i]
     Nothing -> [Pushfun v]
