@@ -27,3 +27,4 @@ tokenize (c : s)
   | c == '=' = case s of
     '=' : s' -> KeywordToken "==" : tokenize s'
     _ -> KeywordToken "=" : tokenize s
+  | otherwise = error $ "Invalid input: " ++ (c:s)

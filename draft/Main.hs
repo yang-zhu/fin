@@ -7,12 +7,14 @@ import MF(Value, HeapCell(VAL), StackCell(HeapAddr), MachineState(..), runMF)
 import Data.Sequence ( index )
 
 test :: String -> Value
-test s = let
-    ms@MachineState{stack=stack, heap=heap} = runMF $ translateProgram $ parseProgram $ tokenize s
-    HeapAddr hCell = head $ stack
-    VAL res = heap `index` hCell
-    in res
+test s = case parseProgram (tokenize s) of
+  Right program ->
+    let ms@MachineState {stack = stack, heap = heap} = runMF $ translateProgram program
+        HeapAddr hCell = head stack
+        VAL res = heap `index` hCell
+     in res
+  Left message -> error message
 
 main = do
-    input <- getLine 
-    print (test input)
+  input <- getLine
+  print (test input)
