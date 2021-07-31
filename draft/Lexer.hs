@@ -39,7 +39,7 @@ tokenizeCharsWithPos ((ln, col, c) : cs)
   | c == '=' = case cs of
     (_, _, '=') : cs' -> KeywordToken ln col "==" : tokenizeCharsWithPos cs'
     _ -> KeywordToken ln col "=" : tokenizeCharsWithPos cs
-  | otherwise = error $ "Invalid input: " ++ c : [c | (_, _, c) <- cs]
+  | otherwise = error $ "Invalid input " ++ show c ++ " at position " ++ show (ln, col) ++ "."
 
 tokenize :: String -> [Token]
 tokenize s = tokenizeCharsWithPos $ addCharPositions s 0 0
