@@ -1,8 +1,18 @@
-module Lexer (Token (..), tokenize) where
+module Lexer (Token (..), tokenize, getTokenPos) where
 
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
-data Token = NumberToken Int Int Integer | NameToken Int Int String | KeywordToken Int Int String deriving (Show)
+data Token = NumberToken Int Int Integer | NameToken Int Int String | KeywordToken Int Int String
+
+instance Show Token where
+  show (NumberToken _ _ t) = show t
+  show (NameToken _ _ t) = show t
+  show (KeywordToken _ _ t) = show t
+
+getTokenPos :: Token -> (Int, Int)
+getTokenPos (NumberToken ln col _) = (ln, col)
+getTokenPos (NameToken ln col _) = (ln, col)
+getTokenPos (KeywordToken ln col _) = (ln, col)
 
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
 
