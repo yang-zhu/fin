@@ -15,13 +15,13 @@ type CodeAddr = Int
 
 type HeapAddr = Int
 
-data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr | Operator Operator deriving (Show)
+data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr deriving (Show)
 
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
 
 data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving (Show)
 
-data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr}
+data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr} deriving Show
 
 runMF :: MachineState -> MachineState
 runMF ms@MachineState {pc = p, code = c, global = g} =

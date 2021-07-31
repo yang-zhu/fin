@@ -69,7 +69,7 @@ parseAtomicExpr (KeywordToken "(" : ts) =
     (e, ts') <- parseExpr0 ts
     rest <- matchKeywordToken ")" ts'
     return (e, rest)
-parseAtomicExpr (KeywordToken t : ts) = Left $ "Expected expression, but found token" ++ show t ++ "."
+parseAtomicExpr (KeywordToken t : ts) = Left $ "Expected expression, but found token " ++ show t ++ "."
 
 startSymbols = ["(", "true", "false"]
 
@@ -216,14 +216,14 @@ parseExpr0 ts = parseExpr1 ts
 
 -- Parse local definitions
 parseLocalDefinitions :: [Token] -> Either ParseError ([LocalDefinition], [Token])
-parseLocalDefinitions (NameToken t : KeywordToken "=" : ts) =
+parseLocalDefinitions (NameToken t : KeywordToken "=" : ts1) =
   do
-    (e, ts') <- parseExpr0 ts
-    case ts' of
-      KeywordToken ";" : bindings -> do
-        (ldefs, rest) <- parseLocalDefinitions bindings
+    (e, ts2) <- parseExpr0 ts1
+    case ts2 of
+      KeywordToken ";" : ts3 -> do
+        (ldefs, rest) <- parseLocalDefinitions ts3
         return (LocalDef t e : ldefs, rest)
-      ts' -> return ([LocalDef t e], ts')
+      ts2 -> return ([LocalDef t e], ts2)
 parseLocalDefinitions (t : ts) = Left $ "Expected local definition, but found " ++ show t ++ "."
 parseLocalDefinitions [] = Left "Expected local definition, but found end of input."
 
@@ -234,12 +234,12 @@ isNameToken _ = False
 
 -- Parse definitions
 parseDefinition :: [Token] -> Either ParseError (Definition, [Token])
-parseDefinition (NameToken t : ts) =
+parseDefinition (NameToken t : ts1) =
   do
-    let vs = takeWhile isNameToken ts
-    let ts' = dropWhile isNameToken ts
-    expr <- matchKeywordToken "=" ts'
-    (e, rest) <- parseExpr0 expr
+    let vs = takeWhile isNameToken ts1
+    let ts2 = dropWhile isNameToken ts1
+    ts3 <- matchKeywordToken "=" ts2
+    (e, rest) <- parseExpr0 ts3
     return (Definition t [v | NameToken v <- vs] e, rest)
 parseDefinition (t : ts) = Left $ "Expected function name, but found " ++ show t ++ "."
 
