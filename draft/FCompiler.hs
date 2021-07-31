@@ -1,3 +1,7 @@
+{-# language
+  NamedFieldPuns -- https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
+#-}
+
 module FCompiler (translateProgram) where
 
 import qualified Data.Map.Strict as Map
@@ -75,11 +79,11 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code = c, heap = h, global = g} d@(Definition f args _) =
+add1Definition ms@MachineState {code, heap, global} d@(Definition f args _) =
   ms
-    { code = c ++ translateDef d,
-      heap = h |> DEF (length c),
-      global = Map.insert f (length h) g
+    { code = code ++ translateDef d,
+      heap = heap |> DEF (length code),
+      global = Map.insert f (length heap) global
     }
 
 -- Translate the program (multiple function definitions)

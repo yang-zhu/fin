@@ -34,16 +34,14 @@ tokenizeCharsWithPos [] = []
 tokenizeCharsWithPos ((ln, col, c) : cs)
   | isSpace c = tokenizeCharsWithPos cs
   | isAlpha c =
-    let tokenWithPos = (ln, col, c) : takeWhile isIdentifierChar cs
-        token = [c | (_, _, c) <- tokenWithPos]
-        rest = dropWhile isIdentifierChar cs
+    let (tokenWithPos, rest) = span isIdentifierChar cs
+        token = c : [c | (_, _, c) <- tokenWithPos]
      in if token `elem` keywords
           then KeywordToken ln col token : tokenizeCharsWithPos rest
           else NameToken ln col token : tokenizeCharsWithPos rest
   | isDigit c =
-    let tokenWithPos = (ln, col, c) : takeWhile (\(_, _, c) -> isDigit c) cs
-        token = [c | (_, _, c) <- tokenWithPos]
-        rest = dropWhile (\(_, _, c) -> isDigit c) cs
+    let (tokenWithPos, rest) = span (\(_, _, c) -> isDigit c) cs
+        token = c : [c | (_, _, c) <- tokenWithPos]
      in NumberToken ln col (read token) : tokenizeCharsWithPos rest
   | c `elem` symbols = KeywordToken ln col [c] : tokenizeCharsWithPos cs
   | c == '=' = case cs of

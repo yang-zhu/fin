@@ -236,8 +236,7 @@ isNameToken _ = False
 parseDefinition :: [Token] -> Either ParseError (Definition, [Token])
 parseDefinition (NameToken _ _ t : ts1) =
   do
-    let vs = takeWhile isNameToken ts1
-    let ts2 = dropWhile isNameToken ts1
+    let (vs, ts2) = span isNameToken ts1
     ts3 <- matchKeywordToken "=" ts2
     (e, rest) <- parseExpr0 ts3
     return (Definition t [v | NameToken _ _ v <- vs] e, rest)
