@@ -1,7 +1,3 @@
-{-# language
-  NamedFieldPuns -- https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
-#-}
-
 module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), runMF) where
 
 import Data.List (findIndex)

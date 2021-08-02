@@ -1,10 +1,10 @@
-module Main where
+module Run where
 
 import Lexer(tokenize)
 import Parser(parseProgram)
 import FCompiler(translateProgram)
 import MF(Value, HeapCell(VAL), StackCell(HeapAddr), MachineState(..), runMF)
-import Data.Sequence ( index )
+import Data.Sequence (index)
 
 test :: String -> Value
 test s = case parseProgram (tokenize s) of
@@ -15,6 +15,7 @@ test s = case parseProgram (tokenize s) of
      in res
   Left message -> error message
 
+main :: IO ()
 main = do
   input <- getLine
   print (test input)

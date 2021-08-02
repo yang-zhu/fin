@@ -1,7 +1,3 @@
-{-# language
-  NamedFieldPuns -- https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
-#-}
-
 module FCompiler (translateProgram) where
 
 import qualified Data.Map.Strict as Map
