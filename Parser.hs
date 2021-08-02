@@ -70,6 +70,7 @@ parseAtomicExpr (KeywordToken _ _ "(" : ts) =
     rest <- matchKeywordToken ")" ts'
     return (e, rest)
 parseAtomicExpr (KeywordToken ln col t : ts) = Left $ "Expected expression, but found token " ++ show t ++ " at position " ++ show (ln, col) ++ "."
+parseAtomicExpr [] = error "unreachable case"  -- parseManyAtomicExpr [] makes it unreachable
 
 startSymbols = ["(", "true", "false"]
 
@@ -241,6 +242,7 @@ parseDefinition (NameToken _ _ t : ts1) =
     (e, rest) <- parseExpr0 ts3
     return (Definition t [v | NameToken _ _ v <- vs] e, rest)
 parseDefinition (t : ts) = Left $ "Expected function name, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
+parseDefinition [] = error "unreachable case"  -- parseProgram [] makes it unreachable
 
 -- Parse a program
 parseProgram :: [Token] -> Either ParseError Program
