@@ -1,50 +1,53 @@
-module Lexer (Token(..), Symbol(..), Keyword(..), tokenize) where
+module Lexer (Token (..), tokenize, getTokenPos) where
 
-import Data.Char ( isAlpha, isDigit, isSpace )
+import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
-data Keyword = If | Then | Else | Not | True | False
-    deriving (Show, Eq)
+data Token = NumberToken Int Int Integer | NameToken Int Int String | KeywordToken Int Int String
 
-data Symbol = Plus | Minus | Times | Div | And | Or | LessThen | BracketA | BracketB | Semicolon | Equal | Assignment
-    deriving (Show, Eq)
+instance Show Token where
+  show (NumberToken _ _ t) = show t
+  show (NameToken _ _ t) = show t
+  show (KeywordToken _ _ t) = show t
 
-data Token = NumberToken Integer | SymbolToken Symbol | KeywordToken Keyword
-    deriving (Show, Eq)
+getTokenPos :: Token -> (Int, Int)
+getTokenPos (NumberToken ln col _) = (ln, col)
+getTokenPos (NameToken ln col _) = (ln, col)
+getTokenPos (KeywordToken ln col _) = (ln, col)
 
-operator :: String -> Token
-operator c | c == "+"       = SymbolToken Plus
-           | c == "-"       = SymbolToken Minus
-           | c == "*"       = SymbolToken Times
-           | c == "/"       = SymbolToken Div
-           | c == "("       = SymbolToken BracketA
-           | c == ")"       = SymbolToken BracketB
-           | c == ";"       = SymbolToken Semicolon
-           | c == "<"       = SymbolToken LessThen
-           | c == "&"       = SymbolToken And
-           | c == "|"       = SymbolToken Or
-           | c == "="       = SymbolToken Assignment
-           | c == "=="      = SymbolToken Equal
-           | c == "if"      = KeywordToken Lexer.If
-           | c == "then"    = KeywordToken Lexer.Then
-           | c == "else"    = KeywordToken Lexer.Else
-           | c == "not"     = KeywordToken Lexer.Not
-           | c == "true"    = KeywordToken Lexer.True
-           | c == "false"   = KeywordToken Lexer.False
-
-symbols :: [Char]
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
-keywords :: [String]
-keywords = ["if", "then", "else", "not", "true", "false"]
+
+keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
+
+-- Add position to each character
+-- tab ('\t') occupies one column
+addCharPositions :: String -> Int -> Int -> [(Int, Int, Char)]
+addCharPositions "" _ _ = []
+addCharPositions ('\n' : cs) ln col = (ln, col, '\n') : addCharPositions cs (ln + 1) 1
+addCharPositions (c : cs) ln col = (ln, col, c) : addCharPositions cs ln (col + 1)
+
+isIdentifierChar :: (Int, Int, Char) -> Bool
+isIdentifierChar (_, _, c) = isAlphaNum c || c == '_'
+
+-- Tokenize a string annotated with positions into a list of tokens annotated with positions
+tokenizeCharsWithPos :: [(Int, Int, Char)] -> [Token]
+tokenizeCharsWithPos [] = []
+tokenizeCharsWithPos ((ln, col, c) : cs)
+  | isSpace c = tokenizeCharsWithPos cs
+  | isAlpha c =
+    let (tokenWithPos, rest) = span isIdentifierChar cs
+        token = c : [c | (_, _, c) <- tokenWithPos]
+     in if token `elem` keywords
+          then KeywordToken ln col token : tokenizeCharsWithPos rest
+          else NameToken ln col token : tokenizeCharsWithPos rest
+  | isDigit c =
+    let (tokenWithPos, rest) = span (\(_, _, c) -> isDigit c) cs
+        token = c : [c | (_, _, c) <- tokenWithPos]
+     in NumberToken ln col (read token) : tokenizeCharsWithPos rest
+  | c `elem` symbols = KeywordToken ln col [c] : tokenizeCharsWithPos cs
+  | c == '=' = case cs of
+    (_, _, '=') : cs' -> KeywordToken ln col "==" : tokenizeCharsWithPos cs'
+    _ -> KeywordToken ln col "=" : tokenizeCharsWithPos cs
+  | otherwise = error $ "Invalid input " ++ show c ++ " at position " ++ show (ln, col) ++ "."
 
 tokenize :: String -> [Token]
-tokenize "" = []
-tokenize (c:s) 
-    | isSpace c = tokenize s
-    | isAlpha c = let token = c : takeWhile isAlpha s 
-                      rest =  dropWhile isAlpha s 
-                  in operator token : tokenize rest
-    | isDigit c = NumberToken (read(c : takeWhile isDigit s)) : tokenize (dropWhile isDigit s)
-    | c `elem` symbols = operator [c] : tokenize s
-    | c == '=' = case s of
-        '=':s' -> SymbolToken Equal : tokenize s'
-        _ -> SymbolToken Assignment : tokenize s
+tokenize s = tokenizeCharsWithPos $ addCharPositions s 0 0
