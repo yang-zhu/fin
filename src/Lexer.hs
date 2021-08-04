@@ -14,8 +14,10 @@ getTokenPos (NumberToken ln col _) = (ln, col)
 getTokenPos (NameToken ln col _) = (ln, col)
 getTokenPos (KeywordToken ln col _) = (ln, col)
 
+symbols :: [Char]
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
 
+keywords :: [[Char]]
 keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
 
 -- Add position to each character

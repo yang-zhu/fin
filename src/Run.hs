@@ -9,7 +9,7 @@ import Data.Sequence (index)
 test :: String -> Value
 test s = case parseProgram (tokenize s) of
   Right program ->
-    let ms@MachineState {stack = stack, heap = heap} = runMF $ translateProgram program
+    let MachineState {stack = stack, heap = heap} = runMF $ translateProgram program
         HeapAddr hCell = head stack
         VAL res = heap `index` hCell
      in res

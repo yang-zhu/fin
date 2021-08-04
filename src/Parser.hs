@@ -55,7 +55,7 @@ matchKeywordToken t (KeywordToken ln col t' : ts) =
   if t == t'
     then return ts
     else Left $ "Expected token " ++ show t ++ ", but found token " ++ show t' ++ " at position " ++ show (ln, col) ++ "."
-matchKeywordToken t (t' : ts) = Left $ "Expected token " ++ show t ++ ", but found token " ++ show t' ++ " at position " ++ show (getTokenPos t') ++ "."
+matchKeywordToken t (t' : _) = Left $ "Expected token " ++ show t ++ ", but found token " ++ show t' ++ " at position " ++ show (getTokenPos t') ++ "."
 matchKeywordToken t [] = Left $ "Expected token " ++ show t ++ ", but found end of input."
 
 -- Parse atomic expressions
@@ -69,15 +69,16 @@ parseAtomicExpr (KeywordToken _ _ "(" : ts) =
     (e, ts') <- parseExpr0 ts
     rest <- matchKeywordToken ")" ts'
     return (e, rest)
-parseAtomicExpr (KeywordToken ln col t : ts) = Left $ "Expected expression, but found token " ++ show t ++ " at position " ++ show (ln, col) ++ "."
+parseAtomicExpr (KeywordToken ln col t : _) = Left $ "Expected expression, but found token " ++ show t ++ " at position " ++ show (ln, col) ++ "."
 parseAtomicExpr [] = error "unreachable case"  -- parseManyAtomicExpr [] makes it unreachable
 
+startSymbols :: [[Char]]
 startSymbols = ["(", "true", "false"]
 
 isExprStart :: Token -> Bool
 isExprStart (KeywordToken _ _ t) = t `elem` startSymbols
-isExprStart (NumberToken _ _ t) = True
-isExprStart (NameToken _ _ t) = True
+isExprStart (NumberToken _ _ _) = True
+isExprStart (NameToken _ _ _) = True
 
 parseManyAtomicExpr :: [Token] -> Either ParseError ([Expression], [Token])
 parseManyAtomicExpr [] = return ([], [])
@@ -97,7 +98,7 @@ parseExpr8 ts =
     case (es, ts') of
       (e : es, ts') -> return (foldl FuncApp e es, ts')
       ([], []) -> Left "Expected expression, but found end of input."
-      ([], t : rest) -> Left $ "Expected expression, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
+      ([], t : _) -> Left $ "Expected expression, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
 
 -- Parse unary minus
 parseExpr7 :: [Token] -> Either ParseError (Expression, [Token])
@@ -225,12 +226,12 @@ parseLocalDefinitions (NameToken _ _ t : KeywordToken _ _ "=" : ts1) =
         (ldefs, rest) <- parseLocalDefinitions ts3
         return (LocalDef t e : ldefs, rest)
       ts2 -> return ([LocalDef t e], ts2)
-parseLocalDefinitions (t : ts) = Left $ "Expected local definition, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
+parseLocalDefinitions (t : _) = Left $ "Expected local definition, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
 parseLocalDefinitions [] = Left "Expected local definition, but found end of input."
 
 -- Check if a token is NameToken
 isNameToken :: Token -> Bool
-isNameToken (NameToken _ _ t) = True
+isNameToken (NameToken _ _ _) = True
 isNameToken _ = False
 
 -- Parse definitions
@@ -241,7 +242,7 @@ parseDefinition (NameToken _ _ t : ts1) =
     ts3 <- matchKeywordToken "=" ts2
     (e, rest) <- parseExpr0 ts3
     return (Definition t [v | NameToken _ _ v <- vs] e, rest)
-parseDefinition (t : ts) = Left $ "Expected function name, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
+parseDefinition (t : _) = Left $ "Expected function name, but found token " ++ show t ++ " at position " ++ show (getTokenPos t) ++ "."
 parseDefinition [] = error "unreachable case"  -- parseProgram [] makes it unreachable
 
 -- Parse a program

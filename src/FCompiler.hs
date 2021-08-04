@@ -20,7 +20,7 @@ import Parser
 
 -- Translate function definitions
 translateDef :: Definition -> [Instruction]
-translateDef (Definition f args body) =
+translateDef (Definition _ args body) =
   translateExpr body pos
     ++ [UpdateFun (length args), Slide (length args + 1), Unwind, Call, Return]
   where
@@ -29,8 +29,8 @@ translateDef (Definition f args body) =
 
 -- Translate local definitions
 translateLocalDefs :: [LocalDefinition] -> [(Variable, Int)] -> [Instruction]
-translateLocalDefs [] pos = []
-translateLocalDefs (LocalDef v e : lDefs) pos =
+translateLocalDefs [] _ = []
+translateLocalDefs (LocalDef _ e : lDefs) pos =
   translateExpr e pos
     ++ [UpdateLet (length lDefs)]
     ++ translateLocalDefs lDefs pos
@@ -66,8 +66,8 @@ translateExpr (If e1 e2 e3) pos =
     ++ translateExpr e2 (map (\(x, y) -> (x, y + 1)) pos)
     ++ translateExpr e1 (map (\(x, y) -> (x, y + 2)) pos)
     ++ [Pushpre IfOperator, Makeapp, Makeapp, Makeapp]
-translateExpr (Number i) pos = [Pushval (IntValue i)]
-translateExpr (TruthValue b) pos = [Pushval (BoolValue b)]
+translateExpr (Number i) _ = [Pushval (IntValue i)]
+translateExpr (TruthValue b) _ = [Pushval (BoolValue b)]
 translateExpr (Var v) pos =
   case lookup v pos of
     Just i -> [Pushparam i]
@@ -75,7 +75,7 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code, heap, global} d@(Definition f args _) =
+add1Definition ms@MachineState {code, heap, global} d@(Definition f _ _) =
   ms
     { code = code ++ translateDef d,
       heap = heap |> DEF (length code),

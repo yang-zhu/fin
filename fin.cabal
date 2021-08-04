@@ -36,6 +36,7 @@ library
       src
   default-extensions:
       NamedFieldPuns
+  ghc-options: -Wall
   build-depends:
       base >=4.7 && <5
     , containers
@@ -47,7 +48,7 @@ executable fin-exe
       Paths_fin
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
@@ -61,7 +62,7 @@ test-suite fin-test
       Paths_fin
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers

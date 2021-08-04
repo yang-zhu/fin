@@ -1,9 +1,7 @@
 module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), runMF) where
 
-import Data.List (findIndex)
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
-import qualified Data.Sequence as Sequence
 import Debug.Trace (trace)
 import Parser (BinaryOp (..), UnaryOp (..))
 
@@ -73,8 +71,8 @@ execInstruction Unwind ms@MachineState {pc, stack = stack@(HeapAddr top : cells)
 execInstruction Call ms@MachineState {pc, stack = stack@(HeapAddr top : cells), heap} =
   case value top heap of
     DEF addr -> ms {pc = addr, stack = CodeAddr pc : stack}
-    PRE uop@(UnaryOperator op) -> ms {pc = 21, stack = CodeAddr pc : stack}
-    PRE bop@(BinaryOperator op) -> ms {pc = 4, stack = CodeAddr pc : stack}
+    PRE (UnaryOperator _) -> ms {pc = 21, stack = CodeAddr pc : stack}
+    PRE (BinaryOperator _) -> ms {pc = 4, stack = CodeAddr pc : stack}
     PRE IfOperator -> ms {pc = 13, stack = CodeAddr pc : stack}
     _ -> ms
 execInstruction Return ms@MachineState {stack = res : CodeAddr ra : cells} =
