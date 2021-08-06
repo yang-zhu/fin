@@ -8,11 +8,12 @@ import Data.Sequence (index)
 
 test :: String -> Value
 test s = case parseProgram (tokenize s) of
-  Right program ->
-    let MachineState {stack = stack, heap = heap} = runMF $ translateProgram program
-        HeapAddr hCell = head stack
-        VAL res = heap `index` hCell
-     in res
+  Right program -> case runMF $ translateProgram program of
+    Right MachineState {stack = stack, heap = heap} ->
+      let HeapAddr hCell = head stack
+          VAL res = heap `index` hCell
+       in res
+    Left message -> error message
   Left message -> error message
 
 main :: IO ()

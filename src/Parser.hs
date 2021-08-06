@@ -1,4 +1,4 @@
-module Parser (Program, Definition (..), LocalDefinition (..), Expression (..), BinaryOp (..), UnaryOp (..), Variable, parseProgram) where
+module Parser (Program, Definition (..), LocalDefinition (..), Expression (..), BinaryOp (..), UnaryOp (..), Variable, ParseError, parseProgram) where
 
 import Debug.Trace (trace)
 import Lexer (Token (..), getTokenPos)
