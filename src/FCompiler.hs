@@ -75,12 +75,15 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code, heap, global} d@(Definition f _ _) =
+add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _ _) =
   ms
-    { code = code ++ translateDef d,
+    { code = code',
       heap = heap |> DEF (length code),
-      global = Map.insert f (length heap) global
+      global = Map.insert f (length heap) global,
+      codeRange = ((length code, length code' - 1), f) : codeRange
     }
+  where
+    code' = code ++ translateDef d
 
 -- Translate the program (multiple function definitions)
 translateProgram :: Program -> MachineState
@@ -127,5 +130,7 @@ translateProgram =
         -- the heap is implemented with a finger tree
         heap = Sequence.empty,
         -- the global environment stores all the functions in a map (function name: heap address)
-        global = Map.empty
+        global = Map.empty,
+        -- codeRange is used to map a code address to the function it belongs to (to give more informative error messages)
+        codeRange = []
       }

@@ -23,7 +23,7 @@ data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator der
 
 data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving (Show)
 
-data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr} deriving Show
+data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr, codeRange :: [((Int, Int), String)]} deriving Show
 
 type MFError = String
 
