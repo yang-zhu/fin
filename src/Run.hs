@@ -13,10 +13,10 @@ test s = case parseProgram (tokenize s) of
       let HeapAddr hCell = head stack
           VAL res = heap `index` hCell
        in res
-    Left message -> error message
-  Left message -> error message
+    Left message -> error $ "Runtime error: " ++ message
+  Left message -> error $ "Syntax error: " ++ message
 
 main :: IO ()
 main = do
   input <- getLine
-  print (test input)
+  putStrLn $ "Result: " ++ show (test input)
