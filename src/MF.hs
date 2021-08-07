@@ -2,8 +2,10 @@ module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Ope
 
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
+import Data.List (find, intercalate)
 import Debug.Trace (trace)
 import Parser (BinaryOp (..), UnaryOp (..))
+import Data.Maybe (catMaybes)
 
 instance Show Value where
   show (IntValue x) = show x
@@ -27,12 +29,39 @@ data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [St
 
 type MFError = String
 
+-- Extract all the stack cells with code addresses
+extractCodeAddr :: [StackCell] -> [CodeAddr]
+extractCodeAddr [] = []
+extractCodeAddr (cell : cells) = case cell of
+  CodeAddr c -> c : extractCodeAddr cells
+  _ -> extractCodeAddr cells
+
+-- Trace back the function, to which a code address belongs
+tracebackFunc :: CodeAddr -> [((Int, Int), String)] -> Maybe String
+tracebackFunc ca codeRange = 
+  do
+    (_, f) <- find (\((start, end), _) -> ca >= start && ca <= end) codeRange
+    return f
+
+-- Trace back all the functions in the current stack
+tracebackFuncs :: MachineState -> [String]
+tracebackFuncs MachineState {pc, stack, codeRange} =
+  let
+    cas = pc : extractCodeAddr stack
+    funcs = [ tracebackFunc ca codeRange | ca <- cas]
+   in catMaybes funcs
+
 runMF :: MachineState -> Either MFError MachineState
 runMF ms@MachineState {pc, code} =
   let i = code !! pc
    in if i == Halt
         then return ms
-        else execInstruction i ms {pc = pc + 1} >>= runMF
+        else case execInstruction i ms {pc = pc + 1} of
+          Right ms -> runMF ms
+          Left err ->
+            do
+              let funcs = tracebackFuncs ms
+              Left $ err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs
         -- for debugging: else runMF $ trace (show (stack ms) ++ "\n" ++ show (heap ms) ++ "\n" ++ show i) (execInstruction i ms{pc=p+1})
 
 -- Follow the IND cell to find the actual heap cell
