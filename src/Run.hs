@@ -1,10 +1,10 @@
 module Run where
 
-import Lexer(tokenize)
-import Parser(parseProgram)
-import FCompiler(translateProgram)
-import MF(Value, HeapCell(VAL), StackCell(HeapAddr), MachineState(..), runMF)
 import Data.Sequence (index)
+import FCompiler (translateProgram)
+import Lexer (tokenize)
+import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, runMF)
+import Parser (parseProgram)
 
 test :: String -> Value
 test s = case parseProgram (tokenize s) of

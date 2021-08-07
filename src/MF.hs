@@ -38,7 +38,7 @@ extractCodeAddr (cell : cells) = case cell of
 
 -- Trace back the function, to which a code address belongs
 tracebackFunc :: CodeAddr -> [((Int, Int), String)] -> Maybe String
-tracebackFunc ca codeRange = 
+tracebackFunc ca codeRange =
   do
     (_, f) <- find (\((start, end), _) -> ca >= start && ca <= end) codeRange
     return f
@@ -46,9 +46,8 @@ tracebackFunc ca codeRange =
 -- Trace back all the functions in the current stack
 tracebackFuncs :: MachineState -> [String]
 tracebackFuncs MachineState {pc, stack, codeRange} =
-  let
-    cas = pc : extractCodeAddr stack
-    funcs = [ tracebackFunc ca codeRange | ca <- cas]
+  let cas = pc : extractCodeAddr stack
+      funcs = [tracebackFunc ca codeRange | ca <- cas]
    in catMaybes funcs
 
 runMF :: MachineState -> Either MFError MachineState
@@ -62,7 +61,7 @@ runMF ms@MachineState {pc, code} =
             do
               let funcs = tracebackFuncs ms
               Left $ err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs
-        -- for debugging: else runMF $ trace (show (stack ms) ++ "\n" ++ show (heap ms) ++ "\n" ++ show i) (execInstruction i ms{pc=p+1})
+-- for debugging: else runMF $ trace (show (stack ms) ++ "\n" ++ show (heap ms) ++ "\n" ++ show i) (execInstruction i ms{pc=p+1})
 
 -- Follow the IND cell to find the actual heap cell
 value :: HeapAddr -> Seq HeapCell -> HeapCell
