@@ -4,7 +4,6 @@ import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
 import Data.List (find, intercalate)
 import Data.Foldable (toList)
-import Debug.Trace (trace)
 import Parser (BinaryOp (..), UnaryOp (..))
 import Data.Maybe (catMaybes)
 
@@ -23,10 +22,9 @@ showHeap heapCells = intercalate "\n" (fmap (\(i, cell) -> "h" ++ show i ++ ": "
     cellWithIndices = zip [0..] (map show (toList heapCells))
 
 instance Show MachineState where
-  show MachineState {pc, code, stack, heap} =
-    "I: " ++ show (code!!pc) ++ "\n" ++
+  show MachineState {pc, stack, heap} =
     "P: c" ++ show pc ++ "\n" ++
-    "====Stack===\n" ++ intercalate "\n" (map show stack) ++ "\n" ++
+    "====Stack===\n" ++ intercalate "\n" (map show (reverse stack)) ++ "\n" ++
     "====Heap====\n" ++  showHeap heap ++ "\n"
     ++"\n"
 
@@ -73,7 +71,7 @@ runMF :: MachineState -> Either MFError [MachineState]
 runMF ms@MachineState {pc, code} =
   let i = code !! pc
    in if i == Halt
-        then return []
+        then return [ms]
         else case execInstruction i ms {pc = pc + 1} of
           Right ms' -> fmap (ms :) (runMF ms')
           Left err ->

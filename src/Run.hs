@@ -36,6 +36,11 @@ showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " 
     codeWithIndices :: [(Int, String)]
     codeWithIndices = zip [0..] (map show instructions)
 
+traceMF :: [MachineState] -> String
+traceMF [] = ""
+traceMF [_] = ""
+traceMF (m : ms) = ("I: " ++ show (code m !! pc m) ++ "\n" ++ show (head ms)) ++ traceMF ms
+
 main :: IO ()
 main =
   do
@@ -50,10 +55,11 @@ main =
           case runMF ms of
             Right machinestates ->
               do
+                -- when the flag "-trace" is enabled
+                when ("-trace" `elem` args) (putStr $ traceMF machinestates)
                 let MachineState {stack, heap} = last machinestates
                 let HeapAddr hCell = head stack
                 let VAL res = heap `index` hCell
-                when ("-trace" `elem` args) (putStr $ concatMap show machinestates)
                 putStrLn $ ">>> Result: " ++ show res
             Left err -> error $ "Runtime error: " ++ err
       Left err -> error $ "Syntax error: " ++ err
