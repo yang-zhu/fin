@@ -3,6 +3,7 @@ module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Ope
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
 import Data.List (find, intercalate)
+import Data.Foldable (toList)
 import Debug.Trace (trace)
 import Parser (BinaryOp (..), UnaryOp (..))
 import Data.Maybe (catMaybes)
@@ -10,6 +11,24 @@ import Data.Maybe (catMaybes)
 instance Show Value where
   show (IntValue x) = show x
   show (BoolValue b) = show b
+
+instance Show StackCell where
+  show (CodeAddr ca) = "c" ++ show ca
+  show (HeapAddr ha) = "h" ++ show ha
+
+showHeap :: Seq HeapCell -> String
+showHeap heapCells = intercalate "\n" (fmap (\(i, cell) -> "h" ++ show i ++ ": " ++ cell) cellWithIndices)
+  where
+    cellWithIndices :: [(Int, String)]
+    cellWithIndices = zip [0..] (map show (toList heapCells))
+
+instance Show MachineState where
+  show MachineState {pc, code, stack, heap} =
+    "I: " ++ show (code!!pc) ++ "\n" ++
+    "P: c" ++ show pc ++ "\n" ++
+    "====Stack===\n" ++ intercalate "\n" (map show stack) ++ "\n" ++
+    "====Heap====\n" ++  showHeap heap ++ "\n"
+    ++"\n"
 
 data Value = IntValue Integer | BoolValue Bool deriving Eq
 
@@ -19,13 +38,13 @@ type CodeAddr = Int
 
 type HeapAddr = Int
 
-data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr deriving (Show)
+data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr
 
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
 
 data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving (Show)
 
-data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr, codeRange :: [((Int, Int), String)]} deriving Show
+data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr, codeRange :: [((Int, Int), String)]}
 
 type MFError = String
 
