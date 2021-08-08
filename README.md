@@ -1,1 +1,1 @@
-# fin
+# Fin - An F Interpreter <img src="fin_logo.jpeg" width=70px>
