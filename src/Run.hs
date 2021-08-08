@@ -6,15 +6,17 @@ import Lexer (tokenize)
 import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, runMF)
 import Parser (parseProgram)
 
-test :: String -> Value
-test s = case parseProgram (tokenize s) of
+run :: String -> Value
+run s = case parseProgram (tokenize s) of
   Right program -> case runMF $ translateProgram program of
-    Right MachineState {stack = stack, heap = heap} ->
-      let HeapAddr hCell = head stack
-          VAL res = heap `index` hCell
+    Right machinestates ->
+      let 
+        MachineState {stack, heap} = last machinestates
+        HeapAddr hCell = head stack
+        VAL res = heap `index` hCell
        in res
-    Left message -> error $ "Runtime error: " ++ message
-  Left message -> error $ "Syntax error: " ++ message
+    Left err -> error $ "Runtime error: " ++ err
+  Left err -> error $ "Syntax error: " ++ err
 
 -- Take in multi-line input until empty line
 multiline :: IO String
@@ -29,4 +31,4 @@ main :: IO ()
 main =
   do
     input <- multiline
-    putStrLn $ "==================\n" ++ "Result: " ++ show (test input)
+    putStrLn $ "==================\n" ++ "Result: " ++ show (run input)
