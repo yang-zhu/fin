@@ -30,6 +30,12 @@ multiline =
       "" -> return s
       _ -> fmap (s ++) multiline
 
+showCode :: MachineState -> String
+showCode MachineState {code} = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ c) codeWithIndices)
+  where
+    codeWithIndices :: [(Int, String)]
+    codeWithIndices = zip [0..] (map show code)
+
 main :: IO ()
 main =
   do
@@ -40,7 +46,7 @@ main =
         do
           let ms = translateProgram program
           -- when the flag "-code" is enabled
-          when ("-code" `elem` args) (putStrLn $ intercalate "\n" (map show (code ms)))
+          when ("-code" `elem` args) (putStrLn $ showCode ms)
           case runMF ms of
             Right machinestates ->
               do
