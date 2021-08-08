@@ -5,6 +5,9 @@ import FCompiler (translateProgram)
 import Lexer (tokenize)
 import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, runMF)
 import Parser (parseProgram)
+import System.Environment (getArgs)
+import Data.List (intercalate)
+import Control.Monad (when)
 
 run :: String -> Value
 run s = case parseProgram (tokenize s) of
@@ -30,5 +33,20 @@ multiline =
 main :: IO ()
 main =
   do
+    args <- getArgs
     input <- multiline
-    putStrLn $ "==================\n" ++ "Result: " ++ show (run input)
+    case parseProgram (tokenize input) of
+      Right program ->
+        do
+          let ms = translateProgram program
+          -- when the flag "-code" is enabled
+          when ("-code" `elem` args) (putStrLn $ intercalate "\n" (map show (code ms)))
+          case runMF ms of
+            Right machinestates ->
+              do
+                let MachineState {stack, heap} = last machinestates
+                let HeapAddr hCell = head stack
+                let VAL res = heap `index` hCell
+                putStrLn $ "==================\n" ++ "Result: " ++ show res
+            Left err -> error $ "Runtime error: " ++ err
+      Left err -> error $ "Syntax error: " ++ err
