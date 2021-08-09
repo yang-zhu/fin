@@ -72,4 +72,4 @@ Fin tells us
 ----
 Group 6: Shiyi Gou, Simon Hehnen, Zhu Yang, Jing Yuan
 <br>
-Tutors: Philipp Zander, Kilian Rückschloss
+Tutors: Philipp Zander, Kilian Rückschloß
