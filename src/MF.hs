@@ -67,17 +67,19 @@ tracebackFuncs MachineState {pc, stack, codeRange} =
       funcs = [tracebackFunc ca codeRange | ca <- cas]
    in catMaybes funcs
 
-runMF :: MachineState -> Either MFError [MachineState]
+runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
   let i = code !! pc
    in if i == Halt
         then return [ms]
         else case execInstruction i ms {pc = pc + 1} of
-          Right ms' -> fmap (ms :) (runMF ms')
+          Right ms' -> case runMF ms' of
+            Right mss -> Right (ms : mss)
+            Left (err, mss) -> Left (err, ms : mss)
           Left err ->
             do
               let funcs = tracebackFuncs ms
-              Left $ err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs
+              Left (err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs, [ms])
 
 -- Follow the IND cell to find the actual heap cell
 value :: HeapAddr -> Seq HeapCell -> HeapCell

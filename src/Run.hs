@@ -18,7 +18,7 @@ run s = case parseProgram (tokenize s) of
         HeapAddr hCell = head stack
         VAL res = heap `index` hCell
        in res
-    Left err -> error $ "Runtime error: " ++ err
+    Left (err, _) -> error $ "Runtime error: " ++ err
   Left err -> error $ "Syntax error: " ++ err
 
 -- Take in multi-line input until empty line
@@ -61,5 +61,9 @@ main =
                 let HeapAddr hCell = head stack
                 let VAL res = heap `index` hCell
                 putStrLn $ ">>> Result: " ++ show res
-            Left err -> error $ "Runtime error: " ++ err
-      Left err -> error $ "Syntax error: " ++ err
+            Left (err, machinestates) -> 
+              do
+                -- still print the trace when there is an error
+                when ("-trace" `elem` args) (putStr $ traceMF machinestates)
+                putStrLn $ "Runtime error: " ++ err
+      Left err -> putStrLn $ "Syntax error: " ++ err
