@@ -41,6 +41,11 @@ traceMF [] = ""
 traceMF [_] = ""
 traceMF (m : ms) = ("I: " ++ show (code m !! pc m) ++ "\n" ++ show (head ms)) ++ traceMF ms
 
+titleStyling :: String -> String
+titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
+                 "| " ++ s ++ " |\n" ++
+                 "+" ++ replicate (length s + 2) '-' ++ "+\n"
+
 main :: IO ()
 main =
   do
@@ -49,14 +54,15 @@ main =
     case parseProgram (tokenize input) of
       Right program ->
         do
+          when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
           let ms = translateProgram program
           -- when the flag "-code" is enabled
-          when ("-code" `elem` args) (putStrLn $ showCode (code ms))
+          when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode (code ms) ++ "\n")
           case runMF ms of
             Right machinestates ->
               do
                 -- when the flag "-trace" is enabled
-                when ("-trace" `elem` args) (putStr $ traceMF machinestates)
+                when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
                 let MachineState {stack, heap} = last machinestates
                 let HeapAddr hCell = head stack
                 let VAL res = heap `index` hCell
