@@ -3,7 +3,7 @@ module Run where
 import Data.Sequence (index)
 import FCompiler (translateProgram)
 import Lexer (tokenize)
-import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, runMF, Instruction)
+import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, showCode, runMF)
 import Parser (parseProgram)
 import System.Environment (getArgs)
 import Data.List (intercalate)
@@ -29,12 +29,6 @@ multiline =
     case s of
       "" -> return s
       _ -> fmap (s ++) multiline
-
-showCode :: [Instruction] -> String
-showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ c) codeWithIndices)
-  where
-    codeWithIndices :: [(Int, String)]
-    codeWithIndices = zip [0..] (map show instructions)
 
 traceMF :: [MachineState] -> String
 traceMF [] = ""

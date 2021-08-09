@@ -1,32 +1,12 @@
-module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), runMF) where
+module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), showCode, runMF) where
 
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
 import Data.List (find, intercalate)
 import Data.Foldable (toList)
+import Data.Tuple (swap) 
 import Parser (BinaryOp (..), UnaryOp (..))
 import Data.Maybe (catMaybes)
-
-instance Show Value where
-  show (IntValue x) = show x
-  show (BoolValue b) = show b
-
-instance Show StackCell where
-  show (CodeAddr ca) = "c" ++ show ca
-  show (HeapAddr ha) = "h" ++ show ha
-
-showHeap :: Seq HeapCell -> String
-showHeap heapCells = intercalate "\n" (fmap (\(i, cell) -> "h" ++ show i ++ ": " ++ cell) cellWithIndices)
-  where
-    cellWithIndices :: [(Int, String)]
-    cellWithIndices = zip [0..] (map show (toList heapCells))
-
-instance Show MachineState where
-  show MachineState {pc, stack, heap} =
-    "P: c" ++ show pc ++ "\n" ++
-    "====Stack===\n" ++ intercalate "\n" (map show (reverse stack)) ++ "\n" ++
-    "====Heap====\n" ++  showHeap heap ++ "\n"
-    ++"\n"
 
 data Value = IntValue Integer | BoolValue Bool deriving Eq
 
@@ -40,11 +20,64 @@ data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr
 
 data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
 
-data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT deriving (Show)
+data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT
 
 data MachineState = MachineState {pc :: Int, code :: [Instruction], stack :: [StackCell], heap :: Seq HeapCell, global :: Map.Map String HeapAddr, codeRange :: [((Int, Int), String)]}
 
 type MFError = String
+
+instance Show Value where
+  show (IntValue x) = show x
+  show (BoolValue b) = show b
+
+instance Show StackCell where
+  show (CodeAddr ca) = "c" ++ show ca
+  show (HeapAddr ha) = "h" ++ show ha
+
+instance Show HeapCell where
+  show (DEF ca) = "DEF c" ++ show ca
+  show (VAL v) = "VAL " ++ show v
+  show (APP ha1 ha2) = "APP h" ++ show ha1 ++ " h" ++ show ha2
+  show (PRE op) = "PRE (" ++ show op ++ ")"
+  show (IND ha) = "IND h" ++ show ha
+  show UNINIT = "UINITIALIZED"
+
+instance Show MachineState where
+  show ms@MachineState {pc} =
+    "P: c" ++ show pc ++ "\n" ++
+    "====Stack===\n" ++ intercalate "\n" (showStack ms) ++ "\n" ++
+    "====Heap====\n" ++ intercalate "\n" (showHeap ms) ++ "\n"
+    ++"\n"
+
+showCode :: [Instruction] -> String
+showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ show c) codeWithAddrs)
+  where
+    codeWithAddrs :: [(CodeAddr, Instruction)]
+    codeWithAddrs = zip [0..] instructions
+
+showStack :: MachineState -> [String]
+showStack MachineState {stack, codeRange} = map showStackCell (reverse stack)
+  where
+    showStackCell :: StackCell -> String
+    showStackCell cell@(CodeAddr ca) = case tracebackFunc ca codeRange of
+      Just f -> show cell  ++ " (" ++ f ++ ")"
+      Nothing -> show cell
+    showStackCell cell = show cell
+
+reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
+reverseMap m = Map.fromList $ map swap (Map.toList m)
+
+showHeap :: MachineState -> [String]
+showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
+  where
+    cellWithAddrs :: [(HeapAddr, HeapCell)]
+    cellWithAddrs = zip [0..] (toList heap)
+
+    reversedGlobal = reverseMap global
+    showHeapCell :: (HeapAddr, HeapCell) -> String
+    showHeapCell (ha, cell) = case Map.lookup ha reversedGlobal of
+      Just f -> "h" ++ show ha ++ ": " ++ show cell ++ " <-- " ++ f
+      Nothing -> "h" ++ show ha ++ ": " ++ show cell
 
 -- Extract all the stack cells with code addresses
 extractCodeAddr :: [StackCell] -> [CodeAddr]
