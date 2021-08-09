@@ -49,27 +49,30 @@ main =
     args <- getArgs
     input <- multiline
     case tokenize input of
-      Right tokens -> case parseProgram tokens of
-        Right program ->
-          do
-            -- when the flag "-parse" is enabled
-            when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
-            let ms = translateProgram program
-            -- when the flag "-code" is enabled
-            when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode (code ms) ++ "\n")
-            case runMF ms of
-              Right machinestates ->
-                do
-                  -- when the flag "-trace" is enabled
-                  when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
-                  let MachineState {stack, heap} = last machinestates
-                  let HeapAddr hCell = head stack
-                  let VAL res = heap `index` hCell
-                  putStrLn $ ">>> Result: " ++ show res
-              Left (err, machinestates) -> 
-                do
-                  -- still print the trace when there is an error
-                  when ("-trace" `elem` args) (putStr $ traceMF machinestates)
-                  putStrLn $ "Runtime error: " ++ err
-        Left err -> putStrLn $ "Syntax error: " ++ err
+      Right tokens -> 
+        do
+          when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
+          case parseProgram tokens of
+            Right program ->
+              do
+                -- when the flag "-parse" is enabled
+                when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
+                let ms = translateProgram program
+                -- when the flag "-code" is enabled
+                when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode (code ms) ++ "\n")
+                case runMF ms of
+                  Right machinestates ->
+                    do
+                      -- when the flag "-trace" is enabled
+                      when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
+                      let MachineState {stack, heap} = last machinestates
+                      let HeapAddr hCell = head stack
+                      let VAL res = heap `index` hCell
+                      putStrLn $ ">>> Result: " ++ show res
+                  Left (err, machinestates) -> 
+                    do
+                      -- still print the trace when there is an error
+                      when ("-trace" `elem` args) (putStr $ traceMF machinestates)
+                      putStrLn $ "Runtime error: " ++ err
+            Left err -> putStrLn $ "Syntax error: " ++ err
       Left err -> putStrLn $ "Lexical error: " ++ err
