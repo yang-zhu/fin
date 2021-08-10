@@ -123,6 +123,7 @@ main =
     case tokenize input of
       Right tokens -> 
         do
+          -- when the flag "-lex" is enabled
           when ("-lex" `elem` args) (putStrLn $ frameTitle "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
           case parseProgram tokens of
             Right program ->
@@ -137,6 +138,8 @@ main =
                     do
                       -- when the flag "-trace" is enabled
                       when ("-trace" `elem` args) (putStr $ frameTitle "Execution Trace" ++ traceMF machinestates)
+                      -- when the flag "-step" is enabled
+                      when ("-step" `elem` args) (putStr $ frameTitle "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n")
                       let MachineState {stack, heap} = last machinestates
                       let HeapAddr hCell = head stack
                       let VAL res = heap `index` hCell
