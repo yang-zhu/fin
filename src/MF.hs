@@ -34,7 +34,8 @@ instance Show StackCell where
 
 instance Show HeapCell where
   show (DEF ca) = "DEF c" ++ show ca
-  show (VAL v) = "VAL " ++ show v
+  show (VAL (IntValue x)) = "VAL Integer " ++ show x
+  show (VAL (BoolValue b)) = "VAL Bool " ++ show b
   show (APP ha1 ha2) = "APP h" ++ show ha1 ++ " h" ++ show ha2
   show (PRE op) = "PRE (" ++ show op ++ ")"
   show (IND ha) = "IND h" ++ show ha

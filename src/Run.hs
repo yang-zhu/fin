@@ -3,7 +3,7 @@ module Run where
 import qualified Data.Map.Strict as Map
 import Data.Sequence (index)
 import Data.Foldable (toList)
-import Data.Tuple (swap) 
+import Data.Tuple (swap)
 import System.Environment (getArgs)
 import Data.List (intercalate)
 import Control.Monad (when)
@@ -43,13 +43,16 @@ showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " 
     codeWithAddrs = zip [0..] instructions
 
 showStack :: MachineState -> [String]
-showStack MachineState {stack, codeRange} = map showStackCell (reverse stack)
+showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
   where
-    showStackCell :: StackCell -> String
-    showStackCell cell@(CodeAddr ca) = case tracebackFunc ca codeRange of
-      Just f -> show cell  ++ " (" ++ f ++ ")"
-      Nothing -> show cell
-    showStackCell cell = show cell
+    cellWithAddrs :: [(Int, StackCell)]
+    cellWithAddrs = zip [0..] stack
+
+    showStackCell :: (Int, StackCell) -> String
+    showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
+      Just f -> "s" ++ show i ++ ": " ++ show (CodeAddr ca)  ++ " (" ++ f ++ ")"
+      Nothing -> "s" ++ show i ++ ": " ++ show (CodeAddr ca)
+    showStackCell (i, cell) = "s" ++ show i ++ ": " ++ show cell
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
 reverseMap m = Map.fromList $ map swap (Map.toList m)
