@@ -7,6 +7,8 @@ import Data.Tuple (swap)
 import System.Environment (getArgs)
 import Data.List (intercalate)
 import Control.Monad (when)
+import System.Console.Pretty (Color(..), Style(..), color, style)
+import System.Exit (exitFailure)
 import Lexer
 import Parser
 import FCompiler
@@ -110,36 +112,58 @@ traceMF (m1 : m2 : ms) =
     mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
   in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
-frameTitle :: String -> String
-frameTitle s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
-                 "| " ++ s ++ " |\n" ++
+titleStyling :: String -> String
+titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
+                 "| " ++ style Bold s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
+
+checkArgs :: [String] -> IO ()
+checkArgs [] = return ()
+checkArgs (arg : args)
+  | arg `elem` flags = checkArgs args
+  | otherwise = do
+    putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
+               ++ "Possible options: " ++ intercalate ", " flags
+    exitFailure
+    where
+      flags = ["-lex", "-parse", "-code", "-step", "-trace"]
+
+asciiLogo :: String
+asciiLogo = "       _____  _\n" ++
+            "      |  ___|(_) _ __\n" ++
+            "      | |_   | || '_ \\\n" ++ 
+            "      |  _|  | || | | |\n" ++
+            color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
+            color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 main :: IO ()
 main =
   do
     args <- getArgs
+    checkArgs args
+    putStrLn asciiLogo
+    putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
     input <- multiline
     case tokenize input of
       Right tokens -> 
         do
           -- when the flag "-lex" is enabled
-          when ("-lex" `elem` args) (putStrLn $ frameTitle "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
+          when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
           case parseProgram tokens of
             Right program ->
               do
                 -- when the flag "-parse" is enabled
-                when ("-parse" `elem` args) (putStrLn $ frameTitle "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
+                when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
                 let ms = translateProgram program
                 -- when the flag "-code" is enabled
-                when ("-code" `elem` args) (putStrLn $ frameTitle "Instructions" ++ showCode ms ++ "\n")
+                when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode ms ++ "\n")
                 case runMF ms of
                   Right machinestates ->
                     do
-                      -- when the flag "-trace" is enabled
-                      when ("-trace" `elem` args) (putStr $ frameTitle "Execution Trace" ++ traceMF machinestates)
                       -- when the flag "-step" is enabled
-                      when ("-step" `elem` args) (putStr $ frameTitle "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n")
+                      when ("-step" `elem` args) (putStr $ titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n")
+                      -- when the flag "-trace" is enabled
+                      when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
                       let MachineState {stack, heap} = last machinestates
                       let HeapAddr hCell = head stack
                       let VAL res = heap `index` hCell
@@ -148,6 +172,6 @@ main =
                     do
                       -- still print the trace when there is an error
                       when ("-trace" `elem` args) (putStr $ traceMF machinestates)
-                      putStrLn $ "Runtime error: " ++ err
-            Left err -> putStrLn $ "Syntax error: " ++ err
-      Left err -> putStrLn $ "Lexical error: " ++ err
+                      putStrLn $ color Red "Runtime error: " ++ err
+            Left err -> putStrLn $ color Red "Syntax error: " ++ err
+      Left err -> putStrLn $ color Red "Lexical error: " ++ err
