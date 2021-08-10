@@ -37,7 +37,7 @@ multiline =
       _ -> fmap (s ++) multiline
 
 showCode :: [Instruction] -> String
-showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ show c) codeWithAddrs)
+showCode instructions = intercalate "\n" (map (\(i, c) -> padString 6 ("c" ++ show i ++ ":") ++ show c) codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
     codeWithAddrs = zip [0..] instructions
@@ -50,9 +50,9 @@ showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
 
     showStackCell :: (Int, StackCell) -> String
     showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
-      Just f -> "s" ++ show i ++ ": " ++ show (CodeAddr ca)  ++ " (" ++ f ++ ")"
-      Nothing -> "s" ++ show i ++ ": " ++ show (CodeAddr ca)
-    showStackCell (i, cell) = "s" ++ show i ++ ": " ++ show cell
+      Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)  ++ " (" ++ f ++ ")"
+      Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
+    showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ show cell
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
 reverseMap m = Map.fromList $ map swap (Map.toList m)
@@ -66,8 +66,8 @@ showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
     reversedGlobal = reverseMap global
     showHeapCell :: (HeapAddr, HeapCell) -> String
     showHeapCell (ha, cell) = case Map.lookup ha reversedGlobal of
-      Just f -> "h" ++ show ha ++ ": " ++ show cell ++ " <-- " ++ f
-      Nothing -> "h" ++ show ha ++ ": " ++ show cell
+      Just f -> padString 5 ("h" ++ show ha ++ ":") ++ show cell ++ " <-- " ++ f
+      Nothing -> padString 5 ("h" ++ show ha ++ ":") ++ show cell
 
 padBlock :: ([String], [String]) -> ([String], [String])
 padBlock (block1, block2) =
@@ -77,8 +77,11 @@ padBlock (block1, block2) =
   where
     longerBlock = max (length block1) (length block2)
 
+padString :: Int -> String -> String
+padString len s = s ++ replicate (len - length s) ' '
+
 padStrings :: Int -> [String] -> [String]
-padStrings minLen strings = map (\s -> s ++ replicate (len - length s) ' ') strings
+padStrings minLen strings = map (padString len) strings
   where
     len = max (maximum $ map length strings) minLen
 
