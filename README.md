@@ -47,11 +47,12 @@ stack run -- [flags]
 ```
 The F program has to be given as input on the terminal. It can be multiple lines and is terminated with an empty line. The F program will be parsed, compiled and run automatically.
 
-The possible flags are: `-lex`, `-parse`, `-code` and `-trace`.
+The possible flags are: `-lex`, `-parse`, `-code`, `-step` and `-trace`.
 
 - `-lex`: Output the tokens.
 - `-parse`: Output the abstract syntax tree.
 - `-code`: Output the compiled MF instructions.
+- `-step`: Output the number of execution steps.
 - `-trace`: Output the trace of the MF execution.
 
 ## Example
