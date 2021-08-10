@@ -1,13 +1,16 @@
 module Run where
 
+import qualified Data.Map.Strict as Map
 import Data.Sequence (index)
-import FCompiler (translateProgram)
-import Lexer (tokenize)
-import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, showCode, showStack, showHeap, mergeBlocks, runMF)
-import Parser (parseProgram)
+import Data.Foldable (toList)
+import Data.Tuple (swap) 
 import System.Environment (getArgs)
 import Data.List (intercalate)
 import Control.Monad (when)
+import Lexer
+import Parser
+import FCompiler
+import MF
 
 run :: String -> Value
 run s = 
@@ -32,6 +35,56 @@ multiline =
     case s of
       "" -> return s
       _ -> fmap (s ++) multiline
+
+showCode :: [Instruction] -> String
+showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ show c) codeWithAddrs)
+  where
+    codeWithAddrs :: [(CodeAddr, Instruction)]
+    codeWithAddrs = zip [0..] instructions
+
+showStack :: MachineState -> [String]
+showStack MachineState {stack, codeRange} = map showStackCell (reverse stack)
+  where
+    showStackCell :: StackCell -> String
+    showStackCell cell@(CodeAddr ca) = case tracebackFunc ca codeRange of
+      Just f -> show cell  ++ " (" ++ f ++ ")"
+      Nothing -> show cell
+    showStackCell cell = show cell
+
+reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
+reverseMap m = Map.fromList $ map swap (Map.toList m)
+
+showHeap :: MachineState -> [String]
+showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
+  where
+    cellWithAddrs :: [(HeapAddr, HeapCell)]
+    cellWithAddrs = zip [0..] (toList heap)
+
+    reversedGlobal = reverseMap global
+    showHeapCell :: (HeapAddr, HeapCell) -> String
+    showHeapCell (ha, cell) = case Map.lookup ha reversedGlobal of
+      Just f -> "h" ++ show ha ++ ": " ++ show cell ++ " <-- " ++ f
+      Nothing -> "h" ++ show ha ++ ": " ++ show cell
+
+padBlock :: ([String], [String]) -> ([String], [String])
+padBlock (block1, block2) =
+  ( block1 ++ replicate (longerBlock - length block1) "",
+    block2 ++ replicate (longerBlock - length block2) ""
+  )
+  where
+    longerBlock = max (length block1) (length block2)
+
+padStrings :: Int -> [String] -> [String]
+padStrings minLen strings = map (\s -> s ++ replicate (len - length s) ' ') strings
+  where
+    len = max (maximum $ map length strings) minLen
+
+mergeBlocks :: [String] -> [String] -> [String]
+mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 paddedBlock2
+  where
+    (block1', block2') = padBlock (block1, block2)
+    paddedBlock1 = padStrings 25 block1'
+    paddedBlock2 = padStrings 25 block2'
 
 traceMF :: [MachineState] -> String
 traceMF [] = ""

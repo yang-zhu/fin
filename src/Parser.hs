@@ -1,6 +1,6 @@
-module Parser (Program, Definition (..), LocalDefinition (..), Expression (..), BinaryOp (..), UnaryOp (..), Variable, ParseError, parseProgram) where
+module Parser where
 
-import Lexer (Token (..), getTokenPos, tokenToStr)
+import Lexer
 
 type Program = [Definition]
 

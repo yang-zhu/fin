@@ -1,4 +1,4 @@
-module Lexer (Token (..), tokenize, getTokenPos, tokenToStr) where
+module Lexer where
 
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
