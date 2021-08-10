@@ -7,7 +7,7 @@ import MF
   ( HeapCell (DEF),
     Instruction (..),
     MachineState (..),
-    Operator (BinaryOperator, IfOperator, UnaryOperator),
+    Operator (..),
     Value (BoolValue, IntValue),
   )
 import Parser
@@ -56,16 +56,16 @@ translateExpr (FuncApp e1 e2) pos =
     ++ [Makeapp]
 translateExpr (Unary op e) pos =
   translateExpr e pos
-    ++ [Pushpre (UnaryOperator op), Makeapp]
+    ++ [Pushpre (UnOp op), Makeapp]
 translateExpr (Binary e1 op e2) pos =
   translateExpr e2 pos
     ++ translateExpr e1 (map (\(x, y) -> (x, y + 1)) pos)
-    ++ [Pushpre (BinaryOperator op), Makeapp, Makeapp]
+    ++ [Pushpre (BinOp op), Makeapp, Makeapp]
 translateExpr (If e1 e2 e3) pos =
   translateExpr e3 pos
     ++ translateExpr e2 (map (\(x, y) -> (x, y + 1)) pos)
     ++ translateExpr e1 (map (\(x, y) -> (x, y + 2)) pos)
-    ++ [Pushpre IfOperator, Makeapp, Makeapp, Makeapp]
+    ++ [Pushpre IfOp, Makeapp, Makeapp, Makeapp]
 translateExpr (Number i) _ = [Pushval (IntValue i)]
 translateExpr (TruthValue b) _ = [Pushval (BoolValue b)]
 translateExpr (Var v) pos =

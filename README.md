@@ -26,7 +26,7 @@ LocalDefinitions := LocalDefinition {; LocalDefinition}
 LocalDefinition := Variable = Expression0
 
 Definition := Variable {Variable} = Expression0
-Program := Definition; {Definition ;} 
+Program := Definition ; {Definition ;} 
 ```
 - [`FCompiler.hs`](src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
 - [`MF.hs`](src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.

@@ -3,7 +3,7 @@ module Run where
 import Data.Sequence (index)
 import FCompiler (translateProgram)
 import Lexer (tokenize)
-import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, showCode, runMF)
+import MF (HeapCell (VAL), MachineState (..), StackCell (HeapAddr), Value, showCode, showStack, showHeap, mergeBlocks, runMF)
 import Parser (parseProgram)
 import System.Environment (getArgs)
 import Data.List (intercalate)
@@ -36,7 +36,11 @@ multiline =
 traceMF :: [MachineState] -> String
 traceMF [] = ""
 traceMF [_] = ""
-traceMF (m : ms) = ("I: " ++ show (code m !! pc m) ++ "\n" ++ show (head ms)) ++ traceMF ms
+traceMF (m1 : m2 : ms) =
+  let
+    mergeSH = mergeBlocks (showStack m2) (showHeap m2)
+    mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
+  in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++

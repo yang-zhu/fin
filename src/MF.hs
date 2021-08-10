@@ -1,4 +1,4 @@
-module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), showCode, runMF) where
+module MF (Value (..), Instruction (..), CodeAddr, HeapAddr, StackCell (..), Operator (..), HeapCell (..), MachineState (..), showCode, showStack, showHeap, mergeBlocks, runMF) where
 
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
@@ -18,7 +18,7 @@ type HeapAddr = Int
 
 data StackCell = CodeAddr CodeAddr | HeapAddr HeapAddr
 
-data Operator = UnaryOperator UnaryOp | BinaryOperator BinaryOp | IfOperator deriving (Eq, Show)
+data Operator = UnOp UnaryOp | BinOp BinaryOp | IfOp deriving (Eq, Show)
 
 data HeapCell = DEF CodeAddr | VAL Value | APP HeapAddr HeapAddr | PRE Operator | IND HeapAddr | UNINIT
 
@@ -40,14 +40,7 @@ instance Show HeapCell where
   show (APP ha1 ha2) = "APP h" ++ show ha1 ++ " h" ++ show ha2
   show (PRE op) = "PRE (" ++ show op ++ ")"
   show (IND ha) = "IND h" ++ show ha
-  show UNINIT = "UINITIALIZED"
-
-instance Show MachineState where
-  show ms@MachineState {pc} =
-    "P: c" ++ show pc ++ "\n" ++
-    "====Stack===\n" ++ intercalate "\n" (showStack ms) ++ "\n" ++
-    "====Heap====\n" ++ intercalate "\n" (showHeap ms) ++ "\n"
-    ++"\n"
+  show UNINIT = "UNINITIALIZED"
 
 showCode :: [Instruction] -> String
 showCode instructions = intercalate "\n" (map (\(i, c) -> "c" ++ show i ++ ": " ++ show c) codeWithAddrs)
@@ -78,6 +71,26 @@ showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
     showHeapCell (ha, cell) = case Map.lookup ha reversedGlobal of
       Just f -> "h" ++ show ha ++ ": " ++ show cell ++ " <-- " ++ f
       Nothing -> "h" ++ show ha ++ ": " ++ show cell
+
+padBlock :: ([String], [String]) -> ([String], [String])
+padBlock (block1, block2) =
+  ( block1 ++ replicate (longerBlock - length block1) "",
+    block2 ++ replicate (longerBlock - length block2) ""
+  )
+  where
+    longerBlock = max (length block1) (length block2)
+
+padStrings :: Int -> [String] -> [String]
+padStrings minLen strings = map (\s -> s ++ replicate (len - length s) ' ') strings
+  where
+    len = max (maximum $ map length strings) minLen
+
+mergeBlocks :: [String] -> [String] -> [String]
+mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 paddedBlock2
+  where
+    (block1', block2') = padBlock (block1, block2)
+    paddedBlock1 = padStrings 25 block1'
+    paddedBlock2 = padStrings 25 block2'
 
 -- Extract all the stack cells with code addresses
 extractCodeAddr :: [StackCell] -> [CodeAddr]
@@ -158,9 +171,9 @@ execInstruction Unwind ms@MachineState {pc, stack = stack@(HeapAddr top : _), he
 execInstruction Call ms@MachineState {pc, stack = stack@(HeapAddr top : _), heap} =
   case value top heap of
     DEF addr -> return ms {pc = addr, stack = CodeAddr pc : stack}
-    PRE (UnaryOperator _) -> return ms {pc = 21, stack = CodeAddr pc : stack}
-    PRE (BinaryOperator _) -> return ms {pc = 4, stack = CodeAddr pc : stack}
-    PRE IfOperator -> return ms {pc = 13, stack = CodeAddr pc : stack}
+    PRE (UnOp _) -> return ms {pc = 21, stack = CodeAddr pc : stack}
+    PRE (BinOp _) -> return ms {pc = 4, stack = CodeAddr pc : stack}
+    PRE IfOp -> return ms {pc = 13, stack = CodeAddr pc : stack}
     _ -> return ms
 execInstruction Return ms@MachineState {stack = res : CodeAddr ra : cells} =
   return
@@ -191,7 +204,7 @@ execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapA
           heap = heap |> VAL evalOpExpr
         }
   where
-    PRE (UnaryOperator op) = value opAddr heap
+    PRE (UnOp op) = value opAddr heap
 execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap} =
   do
     -- v1 and v2 could either be intergers or truth values
@@ -222,7 +235,7 @@ execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAdd
           heap = heap |> VAL evalOpExpr
         }
   where
-    PRE (BinaryOperator op) = value opAddr heap
+    PRE (BinOp op) = value opAddr heap
 execInstruction OperatorIf ms@MachineState {stack = HeapAddr condition : ra : _ : _ : HeapAddr thenAddr : HeapAddr elseAddr : cells, heap} =
   do
     cond <- case value condition heap of
