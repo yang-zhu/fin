@@ -36,11 +36,20 @@ multiline =
       "" -> return s
       _ -> fmap (s ++) multiline
 
-showCode :: [Instruction] -> String
-showCode instructions = intercalate "\n" (map (\(i, c) -> padString 6 ("c" ++ show i ++ ":") ++ show c) codeWithAddrs)
+
+showCode :: MachineState -> String
+showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
-    codeWithAddrs = zip [0..] instructions
+    codeWithAddrs = zip [0..] code
+    
+    codeBeginToFunc :: Map.Map CodeAddr String
+    codeBeginToFunc = Map.fromList ([(begin, f)| ((begin, _), f)<- codeRange] ++ [(4, "binary operator"), (13, "if"), (21, "unary operator")])
+
+    showInstruction :: (CodeAddr, Instruction) -> String
+    showInstruction (ca, instruction) = case Map.lookup ca codeBeginToFunc of
+      Just f -> "\n* " ++ f ++ " *\n" ++ padString 6 ("c" ++ show ca ++ ":") ++ show instruction
+      Nothing -> padString 6 ("c" ++ show ca ++ ":") ++ show instruction
 
 showStack :: MachineState -> [String]
 showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
@@ -101,8 +110,8 @@ traceMF (m1 : m2 : ms) =
     mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
   in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
-titleStyling :: String -> String
-titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
+frameTitle :: String -> String
+frameTitle s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
                  "| " ++ s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
@@ -114,20 +123,20 @@ main =
     case tokenize input of
       Right tokens -> 
         do
-          when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
+          when ("-lex" `elem` args) (putStrLn $ frameTitle "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
           case parseProgram tokens of
             Right program ->
               do
                 -- when the flag "-parse" is enabled
-                when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
+                when ("-parse" `elem` args) (putStrLn $ frameTitle "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
                 let ms = translateProgram program
                 -- when the flag "-code" is enabled
-                when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode (code ms) ++ "\n")
+                when ("-code" `elem` args) (putStrLn $ frameTitle "Instructions" ++ showCode ms ++ "\n")
                 case runMF ms of
                   Right machinestates ->
                     do
                       -- when the flag "-trace" is enabled
-                      when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
+                      when ("-trace" `elem` args) (putStr $ frameTitle "Execution Trace" ++ traceMF machinestates)
                       let MachineState {stack, heap} = last machinestates
                       let HeapAddr hCell = head stack
                       let VAL res = heap `index` hCell
