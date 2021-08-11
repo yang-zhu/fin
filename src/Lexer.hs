@@ -2,7 +2,10 @@ module Lexer where
 
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
-data Token = NumberToken Int Int Integer | NameToken Int Int String | KeywordToken Int Int String
+data Token
+  = NumberToken Int Int Integer
+  | NameToken Int Int String
+  | KeywordToken Int Int String
 
 type LexerError = String
 

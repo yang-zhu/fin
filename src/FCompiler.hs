@@ -113,7 +113,7 @@ translateProgram =
             UpdateOp,
             Return
           ],
-        -- the stack ist modelled as a list where the first element is the top of the stack
+        -- the stack is modelled as a list where the first element is the top of the stack
         stack = [],
         -- the heap is implemented with a finger tree
         heap = Sequence.empty,
