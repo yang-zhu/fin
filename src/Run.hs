@@ -24,38 +24,35 @@ data Options =
   }
 
 run :: String -> Value
-run s = 
-  case tokenize s of
-    Right tokens -> case parseProgram tokens of
-      Right program -> case runMF $ translateProgram program of
-        Right machinestates ->
-          let 
-            MachineState {stack, heap} = last machinestates
+run s = case tokenize s of
+  Right tokens -> case parseProgram tokens of
+    Right program -> case runMF $ translateProgram program of
+      Right machinestates ->
+        let MachineState {stack, heap} = last machinestates
             HeapAddr hCell = head stack
             VAL res = heap `index` hCell
-          in res
-        Left (err, _) -> error $ "Runtime error: " ++ err
-      Left err -> error $ "Syntax error: " ++ err
-    Left err -> error $ "Lexical error: " ++ err
+         in res
+      Left (err, _) -> error $ "Runtime error: " ++ err
+    Left err -> error $ "Syntax error: " ++ err
+  Left err -> error $ "Lexical error: " ++ err
 
 -- Take in multi-line input until empty line
 multiline :: IO String
-multiline =
-  do
-    s <- getLine
-    case s of
-      "" -> return s
-      _ -> fmap (s ++) multiline
+multiline = do
+  s <- getLine
+  case s of
+    "" -> return s
+    _ -> fmap (s ++) multiline
 
 
 showCode :: MachineState -> String
 showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
-    codeWithAddrs = zip [0..] code
-    
+    codeWithAddrs = zip [0 ..] code
+
     codeBeginToFunc :: Map.Map CodeAddr String
-    codeBeginToFunc = Map.fromList ([(begin, f)| ((begin, _), f)<- codeRange] ++ [(4, "binary operator"), (13, "if"), (21, "unary operator")])
+    codeBeginToFunc = Map.fromList ([(begin, f) | ((begin, _), f) <- codeRange] ++ [(4, "binary operator"), (13, "if"), (21, "unary operator")])
 
     showInstruction :: (CodeAddr, Instruction) -> String
     showInstruction (ca, instruction) = case Map.lookup ca codeBeginToFunc of
@@ -66,22 +63,22 @@ showStack :: MachineState -> [String]
 showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
   where
     cellWithAddrs :: [(Int, StackCell)]
-    cellWithAddrs = zip [0..] stack
+    cellWithAddrs = zip [0 ..] stack
 
     showStackCell :: (Int, StackCell) -> String
     showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
-      Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)  ++ " (" ++ f ++ ")"
+      Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
       Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
     showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ show cell
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
-reverseMap m = Map.fromList $ map swap (Map.toList m)
+reverseMap = Map.fromList . map swap . Map.toList
 
 showHeap :: MachineState -> [String]
 showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
   where
     cellWithAddrs :: [(HeapAddr, HeapCell)]
-    cellWithAddrs = zip [0..] (toList heap)
+    cellWithAddrs = zip [0 ..] (toList heap)
 
     reversedGlobal = reverseMap global
     showHeapCell :: (HeapAddr, HeapCell) -> String
@@ -116,10 +113,9 @@ traceMF :: [MachineState] -> String
 traceMF [] = ""
 traceMF [_] = ""
 traceMF (m1 : m2 : ms) =
-  let
-    mergeSH = mergeBlocks (showStack m2) (showHeap m2)
-    mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
-  in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
+  let mergeSH = mergeBlocks (showStack m2) (showHeap m2)
+      mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
+   in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
