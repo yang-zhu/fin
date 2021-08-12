@@ -4,11 +4,8 @@ import qualified Data.Map.Strict as Map
 import Data.Sequence (index)
 import Data.Foldable (toList)
 import Data.Tuple (swap)
-import System.Environment (getArgs)
 import Data.List (intercalate)
 import Control.Monad (when)
-import System.Console.Pretty (Color(..), Style(..), color, style)
-import System.Exit (exitFailure)
 import Lexer
 import Parser
 import FCompiler
@@ -37,16 +34,6 @@ run s =
         Left (err, _) -> error $ "Runtime error: " ++ err
       Left err -> error $ "Syntax error: " ++ err
     Left err -> error $ "Lexical error: " ++ err
-
--- Take in multi-line input until empty line
-multiline :: IO String
-multiline =
-  do
-    s <- getLine
-    case s of
-      "" -> return s
-      _ -> fmap (s ++) multiline
-
 
 showCode :: MachineState -> String
 showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
@@ -123,27 +110,16 @@ traceMF (m1 : m2 : ms) =
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
-                 "| " ++ style Bold s ++ " |\n" ++
+                 "| " ++ s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
-
-checkArgs :: [String] -> IO ()
-checkArgs [] = return ()
-checkArgs (arg : args)
-  | arg `elem` flags = checkArgs args
-  | otherwise = do
-    putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
-               ++ "Possible options: " ++ intercalate ", " flags
-    exitFailure
-    where
-      flags = ["-lex", "-parse", "-code", "-step", "-trace"]
 
 asciiLogo :: String
 asciiLogo = "       _____  _\n" ++
             "      |  ___|(_) _ __\n" ++
             "      | |_   | || '_ \\\n" ++ 
             "      |  _|  | || | | |\n" ++
-            color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
-            color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            "~~~~~~" ++ "|_|" ++ "~~~~" ++ "|_||_| |_|" ++ "~~~~~~" ++ "\n" ++
+            "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 runFin :: Options -> String -> String
 runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
@@ -162,20 +138,6 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                                     HeapAddr hCell = head stack
                                     VAL res = heap `index` hCell
                                  in ">>> Result: " ++ show res
-                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
-          Left err -> color Red "Syntax error: " ++ err
-    Left err -> color Red "Lexical error: " ++ err
-
-main :: IO ()
-main =
-  do
-    args <- getArgs
-    checkArgs args
-    putStrLn asciiLogo
-    putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
-    input <- multiline
-    putStrLn $ runFin Options{lexOpt="-lex" `elem` args,
-                              parseOpt="-parse" `elem` args,
-                              codeOpt="-code" `elem` args,
-                              stepOpt="-step" `elem` args,
-                              traceOpt="-trace" `elem` args} input
+                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ "Runtime error: " ++ err
+          Left err -> "Syntax error: " ++ err
+    Left err -> "Lexical error: " ++ err
