@@ -1,3 +1,68 @@
-p {
-  color: red;  
+body {
+    margin: var(--body_margin);
+}
+
+#heading {
+    display: grid;
+    grid-template-rows: var(--heading_height);
+    grid-template-columns: calc(1.3 * var(--heading_height)) 1fr 1fr;
+}
+#heading > h1 {
+    align-self: end;
+}
+
+#main {
+    display: grid;
+    grid-template-rows:
+        var(--subheading_height)
+        calc(100vh - var(--subheading_height) - var(--heading_height) - 2 * var(--body_margin) - var(--gap) - 1px);
+    grid-template-columns: repeat(2, 1fr) 180px;
+    width: 100%;
+    gap: var(--gap);
+    grid-template-areas:
+        "input_heading output_heading ."
+        "input output options";
+}
+#main > textarea {
+    font: 16px monospace;
+    display: block;
+    object-fit: fill;
+}
+#input {grid-area: input;}
+#output {grid-area: output;}
+#input_heading {grid-area: input_heading;}
+#output_heading {grid-area: output_heading;}
+#options {
+    grid-area: options;
+    align-self: start;
+    padding: 5px;
+}
+#main > textarea, #options {
+    border: 1px solid #219dff;
+    border-radius: 3px;
+}
+
+.label {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: 1.8em auto;
+    align-items: center;
+    justify-items: start;
+    margin: 5px 0;
+}
+
+img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.emphasize {
+    font-style: italic;
+}
+
+:root {
+    --gap: 10px;
+    --heading_height: 7em;
+    --subheading_height: 2.5em;
+    --body_margin: 8px;
 }

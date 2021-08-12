@@ -5,8 +5,8 @@
 F supports function definitions, basic arithmetic computations, recursive let expressions and lazy evaluation. However, it is untyped and does not support higher-order functions, lambda abstractions or local function definitions.
 
 The implementation consists of four parts.
-- [`Lexer.hs`](src/Lexer.hs) tokenizes the input program into tokens. A variable name can contain letters, numbers and underscores, but it has to start with a letter.
-- [`Parser.hs`](src/Parser.hs) implements a recursive descent parser using the following LL(1) grammar:
+- [`Lexer.hs`](frontend/src/Lexer.hs) tokenizes the input program into tokens. A variable name can contain letters, numbers and underscores, but it has to start with a letter.
+- [`Parser.hs`](frontend/src/Parser.hs) implements a recursive descent parser using the following LL(1) grammar:
 ```
 AtomicExpression ::= Variable | Literal | ( Expression0 )
 Expression8 ::= AtomicExpression {AtomicExpression}
@@ -28,32 +28,29 @@ LocalDefinition := Variable = Expression0
 Definition := Variable {Variable} = Expression0
 Program := Definition ; {Definition ;} 
 ```
-- [`FCompiler.hs`](src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
-- [`MF.hs`](src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.
+- [`FCompiler.hs`](frontend/src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
+- [`MF.hs`](frontend/src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.
 
 ## How to build Fin
 
-The project requires [stack](https://docs.haskellstack.org/en/stable/README/).
-After stack is successfully installed, build the project as follows:
-```
-stack build
+1. Follow step 1 and 2 of https://github.com/obsidiansystems/obelisk/#installing-obelisk. There is no need to perform step 3.
+2. Execute
+
+```shell
+mkdir result
+ln -s $(nix-build -A exe --no-out-link)/* result/
+cp -r config result
+(cd result && ./backend)
 ```
 
-## How to run Fin
+as described on https://github.com/obsidiansystems/obelisk#locally.
 
-The project can be run as follows:
-```
-stack run -- [flags]
-```
-The F program has to be given as input on the terminal. It can be multiple lines and is terminated with an empty line. The F program will be parsed, compiled and run automatically.
+## How to develop Fin
 
-The possible flags are: `-lex`, `-parse`, `-code`, `-step` and `-trace`.
+[Install Obelisk](https://github.com/obsidiansystems/obelisk#installing-obelisk). The following options are available.
 
-- `-lex`: Output the tokens.
-- `-parse`: Output the abstract syntax tree.
-- `-code`: Output the compiled MF instructions.
-- `-step`: Output the number of execution steps.
-- `-trace`: Output the trace of the MF execution.
+- Execute `ob run` for a ghcid window. The web server is updated automatically. `-- $>` code comments are supported.
+- Execute `ob repl` for a ghci prompt. Load a module using `:l Run`.
 
 ## Example
 The following F program computes the next prime number after 90.
