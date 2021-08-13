@@ -14,6 +14,15 @@ import Parser
 import FCompiler
 import MF
 
+data Options =
+  Options {
+    lexOpt :: Bool,
+    parseOpt :: Bool,
+    codeOpt :: Bool,
+    stepOpt :: Bool,
+    traceOpt :: Bool
+  }
+
 run :: String -> Value
 run s = case tokenize s of
   Right tokens -> case parseProgram tokens of
@@ -132,37 +141,37 @@ asciiLogo = "       _____  _\n" ++
             color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
             color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
-main :: IO ()
-main = do
-  args <- getArgs
-  checkArgs args
-  putStrLn asciiLogo
-  putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
-  input <- multiline
+runFin :: Options -> String -> String
+runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
   case tokenize input of
-    Right tokens -> do
-      -- when the flag "-lex" is enabled
-      when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
-      case parseProgram tokens of
-        Right program -> do
-          -- when the flag "-parse" is enabled
-          when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
-          let ms = translateProgram program
-          -- when the flag "-code" is enabled
-          when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode ms ++ "\n")
-          case runMF ms of
-            Right machinestates -> do
-              -- when the flag "-step" is enabled
-              when ("-step" `elem` args) (putStr $ titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n")
-              -- when the flag "-trace" is enabled
-              when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
-              let MachineState {stack, heap} = last machinestates
-              let HeapAddr hCell = head stack
-              let VAL res = heap `index` hCell
-              putStrLn $ ">>> Result: " ++ show res
-            Left (err, machinestates) -> do
-              -- still print the trace when there is an error
-              when ("-trace" `elem` args) (putStr $ traceMF machinestates)
-              putStrLn $ color Red "Runtime error: " ++ err
-        Left err -> putStrLn $ color Red "Syntax error: " ++ err
-    Left err -> putStrLn $ color Red "Lexical error: " ++ err
+    Right tokens ->
+      (if lexOpt then titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n\n" else "")
+        ++ case parseProgram tokens of
+          Right program ->
+            (if parseOpt then titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n\n" else "")
+              ++ let ms = translateProgram program
+                  in (if codeOpt then titleStyling "Instructions" ++ showCode ms ++ "\n\n" else "")
+                       ++ case runMF ms of
+                         Right machinestates ->
+                           (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
+                             ++ let MachineState {stack, heap} = last machinestates
+                                    HeapAddr hCell = head stack
+                                    VAL res = heap `index` hCell
+                                 in ">>> Result: " ++ show res
+                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
+          Left err -> color Red "Syntax error: " ++ err
+    Left err -> color Red "Lexical error: " ++ err
+
+main :: IO ()
+main =
+  do
+    args <- getArgs
+    checkArgs args
+    putStrLn asciiLogo
+    putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
+    input <- multiline
+    putStrLn $ runFin Options{lexOpt="-lex" `elem` args,
+                              parseOpt="-parse" `elem` args,
+                              codeOpt="-code" `elem` args,
+                              stepOpt="-step" `elem` args,
+                              traceOpt="-trace" `elem` args} input
