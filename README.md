@@ -1,4 +1,4 @@
-# Fin - An F Interpreter <img src="fin_logo.jpeg" width=90px>
+# Fin - An F Interpreter <img src="static/fin_logo.jpeg" width=90px>
 
 **Fin** is an implementation of the simple functional language F.
 
