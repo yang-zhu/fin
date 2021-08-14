@@ -44,48 +44,56 @@ multiline = do
     "" -> return s
     _ -> fmap (s ++) multiline
 
-
+-- Display MF code
 showCode :: MachineState -> String
 showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
     codeWithAddrs = zip [0 ..] (toList code)
 
+    -- mapping from the index of the first instruction of a function to the name of the function
     codeBeginToFunc :: Map.Map CodeAddr String
     codeBeginToFunc = Map.fromList ([(begin, f) | ((begin, _), f) <- codeRange] ++ [(4, "binary operator"), (13, "if"), (21, "unary operator")])
 
+    -- insert new lines between functions and add the function names
     showInstruction :: (CodeAddr, Instruction) -> String
     showInstruction (ca, instruction) = case Map.lookup ca codeBeginToFunc of
       Just f -> "\n* " ++ f ++ " *\n" ++ padString 6 ("c" ++ show ca ++ ":") ++ show instruction
       Nothing -> padString 6 ("c" ++ show ca ++ ":") ++ show instruction
 
+-- Display stack cells
 showStack :: MachineState -> [String]
 showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
   where
     cellWithAddrs :: [(Int, StackCell)]
     cellWithAddrs = zip [0 ..] stack
 
+    -- add function names to stack cells that contain code addresses
     showStackCell :: (Int, StackCell) -> String
     showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
       Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
       Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
     showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ show cell
 
+-- Reverse key and value in a map
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
 reverseMap = Map.fromList . map swap . Map.toList
 
+-- Display heap cells
 showHeap :: MachineState -> [String]
 showHeap MachineState {heap, global} = map showHeapCell cellWithAddrs
   where
     cellWithAddrs :: [(HeapAddr, HeapCell)]
     cellWithAddrs = zip [0 ..] (toList heap)
 
-    reversedGlobal = reverseMap global
+    reversedGlobal = reverseMap global  -- (heap address : function)
+    -- add function names to heap cells that the global environment points to
     showHeapCell :: (HeapAddr, HeapCell) -> String
     showHeapCell (ha, cell) = case Map.lookup ha reversedGlobal of
       Just f -> padString 5 ("h" ++ show ha ++ ":") ++ show cell ++ " <-- " ++ f
       Nothing -> padString 5 ("h" ++ show ha ++ ":") ++ show cell
 
+-- Pad the shorter block with empty lines, so the two blocks have the same length
 padBlock :: ([String], [String]) -> ([String], [String])
 padBlock (block1, block2) =
   ( block1 ++ replicate (longerBlock - length block1) "",
@@ -97,11 +105,13 @@ padBlock (block1, block2) =
 padString :: Int -> String -> String
 padString len s = s ++ replicate (len - length s) ' '
 
+-- Pad the shorter strings with spaces, so all the lines have the same length, which is max(minLen, the length of the longest line)
 padStrings :: Int -> [String] -> [String]
 padStrings minLen strings = map (padString len) strings
   where
     len = max (maximum $ map length strings) minLen
 
+-- Merge two blocks into one rectangular block
 mergeBlocks :: [String] -> [String] -> [String]
 mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 paddedBlock2
   where
@@ -109,6 +119,7 @@ mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 pad
     paddedBlock1 = padStrings 25 block1'
     paddedBlock2 = padStrings 25 block2'
 
+-- Display the execution trace as in the script
 traceMF :: [MachineState] -> String
 traceMF [] = ""
 traceMF [_] = ""
@@ -117,11 +128,13 @@ traceMF (m1 : m2 : ms) =
       mergeAll = mergeBlocks ["I: " ++ show (code m1 `index` pc m1), "P: c" ++ show (pc m2)] mergeSH
    in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
+-- Make a title bold and add a frame around it
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
                  "| " ++ style Bold s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
+-- Check if the command line arguments are valid. If not, give help information.
 checkArgs :: [String] -> IO ()
 checkArgs [] = return ()
 checkArgs (arg : args)
@@ -133,6 +146,7 @@ checkArgs (arg : args)
     where
       flags = ["-lex", "-parse", "-code", "-step", "-trace"]
 
+-- The logo "Fin" in ASCII art
 asciiLogo :: String
 asciiLogo = "       _____  _\n" ++
             "      |  ___|(_) _ __\n" ++
