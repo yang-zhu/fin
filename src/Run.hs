@@ -49,7 +49,7 @@ showCode :: MachineState -> String
 showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
-    codeWithAddrs = zip [0 ..] code
+    codeWithAddrs = zip [0 ..] (toList code)
 
     codeBeginToFunc :: Map.Map CodeAddr String
     codeBeginToFunc = Map.fromList ([(begin, f) | ((begin, _), f) <- codeRange] ++ [(4, "binary operator"), (13, "if"), (21, "unary operator")])
@@ -114,7 +114,7 @@ traceMF [] = ""
 traceMF [_] = ""
 traceMF (m1 : m2 : ms) =
   let mergeSH = mergeBlocks (showStack m2) (showHeap m2)
-      mergeAll = mergeBlocks ["I: " ++ show (code m1 !! pc m1), "P: c" ++ show (pc m2)] mergeSH
+      mergeAll = mergeBlocks ["I: " ++ show (code m1 `index` pc m1), "P: c" ++ show (pc m2)] mergeSH
    in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
 titleStyling :: String -> String
