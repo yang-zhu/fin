@@ -3,6 +3,7 @@ module FCompiler where
 import qualified Data.Map.Strict as Map
 import Data.Sequence ((|>), (><))
 import qualified Data.Sequence as Sequence
+import qualified Data.Set as Set
 import MF
 import Parser
 
@@ -63,12 +64,13 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _ _) =
+add1Definition ms@MachineState {code, heap, global, codeRange, reachable} d@(Definition f _ _) =
   ms
     { code = code',
       heap = heap |> DEF (length code),
       global = Map.insert f (length heap) global,
-      codeRange = ((length code, length code' - 1), f) : codeRange
+      codeRange = ((length code, length code' - 1), f) : codeRange,
+      reachable = Set.insert (length heap) reachable
     }
   where
     code' = code >< Sequence.fromList (translateDef d)
@@ -121,5 +123,8 @@ translateProgram =
         -- the global environment stores all the functions in a map (function name: heap address)
         global = Map.empty,
         -- codeRange is used to map a code address to the function it belongs to (to give more informative error messages)
-        codeRange = []
+        codeRange = [],
+        reachable = Set.empty,
+        freeList = [],
+        gcInterval = 10
       }

@@ -69,6 +69,7 @@ showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
       Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
       Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
     showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ show cell
+    -- showStackCell (i, HeapAddr ha) = padString 5 ("s" ++ show i ++ ":") ++ show (HeapAddr ha) ++ if ha < Seq.length heap then " (" ++ show (value ha heap) ++ ")" else "(INVALID ADDRESS)"
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
 reverseMap = Map.fromList . map swap . Map.toList

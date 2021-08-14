@@ -2,8 +2,10 @@ module MF where
 
 import qualified Data.Map.Strict as Map
 import Data.Sequence (Seq, index, update, (|>))
+import qualified Data.Sequence as Seq
 import Data.List (find, intercalate)
 import Data.Maybe (catMaybes)
+import Data.Set (Set, notMember, insert, fromList)
 import Parser
 
 data Value
@@ -61,7 +63,10 @@ data MachineState = MachineState
     stack :: [StackCell],
     heap :: Seq HeapCell,
     global :: Map.Map String HeapAddr,
-    codeRange :: [((Int, Int), String)]
+    codeRange :: [((Int, Int), String)],
+    reachable :: Set HeapAddr,
+    freeList :: [HeapAddr],
+    gcInterval :: Int
   }
 
 type MFError = String
@@ -103,6 +108,30 @@ tracebackFuncs MachineState {pc, stack, codeRange} =
       funcs = [tracebackFunc ca codeRange | ca <- cas]
    in catMaybes funcs
 
+followPointer :: HeapAddr -> Seq HeapCell -> Set HeapAddr -> Set HeapAddr
+followPointer ha heap reachable =
+   if notMember ha reachable
+    then case heap `index` ha of
+      (APP h1 h2) -> followPointer h2 heap (followPointer h1 heap (insert ha reachable))
+      (IND h) -> followPointer h heap (insert ha reachable)
+      _ -> insert ha reachable
+    else reachable
+
+reachableCells :: MachineState -> [StackCell] -> MachineState
+reachableCells ms [] = ms
+reachableCells ms@MachineState{heap, reachable} (cell : cells) = case cell of
+  HeapAddr ha ->
+    let reachable' = followPointer ha heap reachable
+     in reachableCells ms {reachable=reachable'} cells
+  CodeAddr _ -> reachableCells ms cells
+
+collectGarbage :: MachineState -> MachineState
+collectGarbage ms@MachineState{global, stack, heap, gcInterval} =
+  let
+    reachable' = reachable (reachableCells ms stack)
+    freeList = filter (`notMember`  reachable') [0..Seq.length heap - 1]
+  in ms {reachable = fromList (Map.elems global), freeList = freeList, gcInterval = gcInterval * 2}
+
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
   let i = code `index` pc
@@ -115,6 +144,14 @@ runMF ms@MachineState {pc, code} =
           Left err -> do
             let funcs = tracebackFuncs ms
             Left (err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs, [ms])
+
+allocate :: MachineState -> HeapCell -> MachineState
+allocate ms@MachineState {stack, heap, freeList, gcInterval} cell =
+  if null freeList
+    then if length heap == gcInterval
+      then allocate (collectGarbage ms) cell
+      else ms {stack = HeapAddr (length heap) : stack, heap = heap |> cell}
+    else ms {stack = HeapAddr (head freeList) : stack, heap = update (head freeList) cell heap, freeList = tail freeList}
 
 -- Follow the IND cell to find the actual heap cell
 value :: HeapAddr -> Seq HeapCell -> HeapCell
@@ -130,12 +167,7 @@ execInstruction (Pushfun f) ms@MachineState {stack, global} =
   case Map.lookup f global of
     Just funAddr -> return ms {stack = HeapAddr funAddr : stack}
     Nothing -> Left $ "Function " ++ f ++ " not found."
-execInstruction (Pushval v) ms@MachineState {stack, heap} =
-  return ms 
-    { -- (length heap) is exactly the index of the newly added heap cell
-      stack = HeapAddr (length heap) : stack,
-      heap = heap |> VAL v
-    }
+execInstruction (Pushval v) ms = return $ allocate ms (VAL v)
 execInstruction (Pushparam n) ms@MachineState {stack, heap} =
   case stack !! (n + 1) of
     HeapAddr appAddr -> case value appAddr heap of
@@ -143,11 +175,12 @@ execInstruction (Pushparam n) ms@MachineState {stack, heap} =
       APP _ arg2 -> return ms {stack = HeapAddr arg2 : stack}
       cell -> Left $ "Pushparam expected an APP-cell, but found " ++ show cell ++ "."
     CodeAddr ca -> Left $ "Pushparam expected a heap address, but found code address " ++ show ca ++ "."
-execInstruction Makeapp ms@MachineState {stack = HeapAddr first : HeapAddr second : cells, heap} =
-  return ms
-    { stack = HeapAddr (length heap) : cells,
-      heap = heap |> APP first second
-    }
+execInstruction Makeapp ms@MachineState {stack = HeapAddr first : HeapAddr second : _} =
+  let
+    -- !!! First allocate, then delete the first and second cells, otherwise the heap cells at first and second and the cells they point to won't be taken into account by the garbarge collector. 
+    ms' = allocate ms (APP first second)
+    (appCell : cells) = stack ms'
+   in return ms' {stack = appCell : drop 2 cells}
 -- clean up the stack by removing the slots produced by Unwind, only the unevaluated body and the return address are kept
 execInstruction (Slide n) ms@MachineState {stack = funBody : ra : cells} =
   return ms {stack = funBody : ra : drop n cells}
@@ -168,11 +201,7 @@ execInstruction Return ms@MachineState {stack = res : CodeAddr ra : cells} =
     { pc = ra,
       stack = res : cells
     }
-execInstruction (Pushpre op) ms@MachineState {stack, heap} =
-  return ms
-    { stack = HeapAddr (length heap) : stack,
-      heap = heap |> PRE op
-    }
+execInstruction (Pushpre op) ms = return $ allocate ms (PRE op)
 execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapAddr opAddr : cells, heap} = do
   v <- case value operand heap of
     VAL v -> Right v
@@ -182,11 +211,7 @@ execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapA
     (Neg, IntValue x) -> Right $ IntValue (negate x)
     (Not, _) -> Left $ "Expected a truth value, but found " ++ show v ++ "."
     (Neg, _) -> Left $ "Expected a number, but found " ++ show v ++ "."
-  return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell is removed
-      stack = HeapAddr (length heap) : ra : cells,
-      heap = heap |> VAL evalOpExpr
-    }
+  return $ allocate ms {stack = ra : cells} (VAL evalOpExpr)
   where
     PRE (UnOp op) = value opAddr heap
 execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap} = do
@@ -211,11 +236,7 @@ execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAdd
     (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
     (Divide, IntValue x1, IntValue x2) -> Right $ IntValue (x1 `div` x2)
     (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
-  return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed
-      stack = HeapAddr (length heap) : ra : drop 1 cells,
-      heap = heap |> VAL evalOpExpr
-    }
+  return $ allocate ms {stack = ra : drop 1 cells} (VAL evalOpExpr)
   where
     PRE (BinOp op) = value opAddr heap
 execInstruction OperatorIf ms@MachineState {stack = HeapAddr condition : ra : _ : _ : HeapAddr thenAddr : HeapAddr elseAddr : cells, heap} = do
@@ -261,11 +282,7 @@ execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, hea
       heap = update replaced (IND res) heap
     }
 -- allocate UNINIT-cell in the heap and push its address onto the stack
-execInstruction Alloc ms@MachineState {stack, heap} =
-  return ms
-    { stack = HeapAddr (length heap) : stack,
-      heap = heap |> UNINIT
-    }
+execInstruction Alloc ms = return $ allocate ms UNINIT
 -- clean up dummy APP-nodes for local definitions on the stack
 execInstruction (SlideLet n) ms@MachineState {stack = res : cells} =
   return ms {stack = res : drop n cells}
