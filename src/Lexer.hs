@@ -27,7 +27,7 @@ getTokenPos (KeywordToken ln col _) = (ln, col)
 symbols :: [Char]
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
 
-keywords :: [[Char]]
+keywords :: [String]
 keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
 
 -- Add position to each character

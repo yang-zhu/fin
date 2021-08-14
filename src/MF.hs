@@ -101,7 +101,7 @@ tracebackFuncs :: MachineState -> [String]
 tracebackFuncs MachineState {pc, stack, codeRange} =
   let cas = pc : extractCodeAddr stack
       funcs = [tracebackFunc ca codeRange | ca <- cas]
-   in catMaybes funcs
+   in catMaybes funcs  -- only Just values are kept
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
