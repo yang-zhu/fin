@@ -1,11 +1,12 @@
 module MF where
 
 import qualified Data.Map.Strict as Map
-import Data.Sequence (Seq, index, update, (|>))
+import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
-import Data.List (find, intercalate)
+import qualified Data.List as List
 import Data.Maybe (catMaybes)
-import Data.Set (Set, notMember, insert, fromList)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Parser
 
 data Value
@@ -98,7 +99,7 @@ extractCodeAddr (cell : cells) = case cell of
 -- Trace back the function, to which a code address belongs
 tracebackFunc :: CodeAddr -> [((Int, Int), String)] -> Maybe String
 tracebackFunc ca codeRange = do
-  (_, f) <- find (\((start, end), _) -> ca >= start && ca <= end) codeRange
+  (_, f) <- List.find (\((start, end), _) -> ca >= start && ca <= end) codeRange
   return f
 
 -- Trace back all the functions in the current stack
@@ -110,11 +111,11 @@ tracebackFuncs MachineState {pc, stack, codeRange} =
 
 followPointer :: HeapAddr -> Seq HeapCell -> Set HeapAddr -> Set HeapAddr
 followPointer ha heap reachable =
-   if notMember ha reachable
-    then case heap `index` ha of
-      (APP h1 h2) -> followPointer h2 heap (followPointer h1 heap (insert ha reachable))
-      (IND h) -> followPointer h heap (insert ha reachable)
-      _ -> insert ha reachable
+   if Set.notMember ha reachable
+    then case heap `Seq.index` ha of
+      (APP h1 h2) -> followPointer h2 heap (followPointer h1 heap (Set.insert ha reachable))
+      (IND h) -> followPointer h heap (Set.insert ha reachable)
+      _ -> Set.insert ha reachable
     else reachable
 
 reachableCells :: MachineState -> [StackCell] -> MachineState
@@ -129,12 +130,12 @@ collectGarbage :: MachineState -> MachineState
 collectGarbage ms@MachineState{global, stack, heap, gcInterval} =
   let
     reachable' = reachable (reachableCells ms stack)
-    freeList = filter (`notMember`  reachable') [0..Seq.length heap - 1]
-  in ms {reachable = fromList (Map.elems global), freeList = freeList, gcInterval = gcInterval * 2}
+    freeList = filter (`Set.notMember`  reachable') [0..Seq.length heap - 1]
+  in ms {reachable = Set.fromList (Map.elems global), freeList = freeList, gcInterval = gcInterval * 2}
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
-  let i = code `index` pc
+  let i = code `Seq.index` pc
    in if i == Halt
         then return [ms]
         else case execInstruction i ms {pc = pc + 1} of
@@ -143,7 +144,7 @@ runMF ms@MachineState {pc, code} =
             Left (err, mss) -> Left (err, ms : mss)
           Left err -> do
             let funcs = tracebackFuncs ms
-            Left (err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs, [ms])
+            Left (err ++ "\nTraceback (most recent call first): " ++ List.intercalate ", " funcs, [ms])
 
 allocate :: MachineState -> HeapCell -> MachineState
 allocate ms@MachineState {stack, heap, freeList, gcInterval} cell =
@@ -151,11 +152,11 @@ allocate ms@MachineState {stack, heap, freeList, gcInterval} cell =
     then if length heap == gcInterval
       then allocate (collectGarbage ms) cell
       else ms {stack = HeapAddr (length heap) : stack, heap = heap |> cell}
-    else ms {stack = HeapAddr (head freeList) : stack, heap = update (head freeList) cell heap, freeList = tail freeList}
+    else ms {stack = HeapAddr (head freeList) : stack, heap = Seq.update (head freeList) cell heap, freeList = tail freeList}
 
 -- Follow the IND cell to find the actual heap cell
 value :: HeapAddr -> Seq HeapCell -> HeapCell
-value addr1 heap = case heap `index` addr1 of
+value addr1 heap = case heap `Seq.index` addr1 of
   IND addr2 -> value addr2 heap
   anything -> anything
 
@@ -259,7 +260,7 @@ execInstruction (UpdateFun n) ms@MachineState {stack = HeapAddr funBody : stack,
     HeapAddr replaced ->
       return
         ms
-          { heap = update replaced (IND funBody) heap
+          { heap = Seq.update replaced (IND funBody) heap
           }
     CodeAddr ca -> Left $ "Expected a heap address, but found code address " ++ show ca ++ "."
 -- replace the heap cell that contains the top APP-node with the result of the operator, top of the stack points to the updated APP-node heap cell
@@ -267,7 +268,7 @@ execInstruction (UpdateFun n) ms@MachineState {stack = HeapAddr funBody : stack,
 execInstruction UpdateOp ms@MachineState {stack = HeapAddr res : ra : HeapAddr replaced : cells, heap} =
   return ms
     { stack = HeapAddr replaced : ra : cells,
-      heap = update replaced (heap `index` res) heap
+      heap = Seq.update replaced (heap `Seq.index` res) heap
     }
 -- replace the right child of the dummy APP-node with its expression graph and pop the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, heap} = do
@@ -279,7 +280,7 @@ execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, hea
     cell -> Left $ "Expected an APP-cell, but found " ++ show cell ++ "."
   return ms
     { stack = cells,
-      heap = update replaced (IND res) heap
+      heap = Seq.update replaced (IND res) heap
     }
 -- allocate UNINIT-cell in the heap and push its address onto the stack
 execInstruction Alloc ms = return $ allocate ms UNINIT
