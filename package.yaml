@@ -29,6 +29,7 @@ executables:
     dependencies:
     - fin
     - containers
+    - pretty-terminal
 
 tests:
   fin-test:
