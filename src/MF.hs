@@ -57,7 +57,7 @@ data HeapCell
 
 data MachineState = MachineState
   { pc :: Int,
-    code :: [Instruction],
+    code :: Seq Instruction,
     stack :: [StackCell],
     heap :: Seq HeapCell,
     global :: Map.Map String HeapAddr,
@@ -105,7 +105,7 @@ tracebackFuncs MachineState {pc, stack, codeRange} =
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
-  let i = code !! pc
+  let i = code `index` pc
    in if i == Halt
         then return [ms]
         else case execInstruction i ms {pc = pc + 1} of

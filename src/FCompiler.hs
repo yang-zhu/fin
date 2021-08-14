@@ -1,7 +1,7 @@
 module FCompiler where
 
 import qualified Data.Map.Strict as Map
-import Data.Sequence ((|>))
+import Data.Sequence ((|>), (><))
 import qualified Data.Sequence as Sequence
 import MF
 import Parser
@@ -71,7 +71,7 @@ add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _
       codeRange = ((length code, length code' - 1), f) : codeRange
     }
   where
-    code' = code ++ translateDef d
+    code' = code >< Sequence.fromList (translateDef d)
 
 -- Translate the program (multiple function definitions)
 translateProgram :: Program -> MachineState
@@ -80,7 +80,8 @@ translateProgram =
     add1Definition
     MachineState
       { pc = 0,
-        code =
+        code = 
+          Sequence.fromList 
           [ -- starting point
             Reset,
             Pushfun "main",
