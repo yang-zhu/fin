@@ -13,3 +13,7 @@ result
 result-*
 tags
 TAGS
+
+.stack-work/
+*~
+.DS_Store
