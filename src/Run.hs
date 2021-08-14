@@ -5,6 +5,7 @@ import qualified Data.Sequence as Seq
 import qualified Data.List as List
 import Data.Foldable (toList)
 import Data.Tuple (swap)
+import System.Console.Pretty (Color(..), Style(..), color, style)
 import Lexer
 import Parser
 import FCompiler
@@ -106,7 +107,7 @@ traceMF (m1 : m2 : ms) =
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
-                 "| " ++ s ++ " |\n" ++
+                 "| " ++ style Bold s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
 runFin :: Options -> String -> String
@@ -126,6 +127,6 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                                     HeapAddr hCell = head stack
                                     VAL res = heap `Seq.index` hCell
                                  in ">>> Result: " ++ show res
-                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ "Runtime error: " ++ err
-          Left err -> "Syntax error: " ++ err
-    Left err -> "Lexical error: " ++ err
+                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
+          Left err -> color Red "Syntax error: " ++ err
+    Left err -> color Red "Lexical error: " ++ err
