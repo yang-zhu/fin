@@ -9,6 +9,7 @@ import Data.List (intercalate)
 import Control.Monad (when)
 import System.Console.Pretty (Color(..), Style(..), color, style)
 import System.Exit (exitFailure)
+import Control.Exception (catch, IOException)
 import Lexer
 import Parser
 import FCompiler
@@ -26,14 +27,6 @@ run s = case tokenize s of
       Left (err, _) -> error $ "Runtime error: " ++ err
     Left err -> error $ "Syntax error: " ++ err
   Left err -> error $ "Lexical error: " ++ err
-
--- Take in multi-line input until empty line
-multiline :: IO String
-multiline = do
-  s <- getLine
-  case s of
-    "" -> return s
-    _ -> ((s ++ "\n") ++) <$> multiline
 
 -- Display MF code
 showCode :: MachineState -> String
@@ -125,10 +118,18 @@ titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
                  "| " ++ style Bold s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
--- Check if the command line arguments are valid. If not, give help information.
-checkArgs :: [String] -> IO ()
-checkArgs [] = return ()
-checkArgs (arg : args)
+-- Take in multi-line input until empty line
+multiline :: IO String
+multiline = do
+  s <- getLine
+  case s of
+    "" -> return s
+    _ -> ((s ++ "\n") ++) <$> multiline
+
+-- Check if the command line arguments are valid. Otherwise give help information. Return the file path if only one is provided.
+checkArgs :: [String] -> IO (Maybe String)
+checkArgs [] = return Nothing
+checkArgs (arg@('-' : _) : args)
   | arg `elem` flags = checkArgs args
   | otherwise = do
     putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
@@ -136,6 +137,13 @@ checkArgs (arg : args)
     exitFailure
     where
       flags = ["-lex", "-parse", "-code", "-step", "-trace"]
+checkArgs (path : args) = do
+  otherPath <- checkArgs args
+  case otherPath of
+    Just _ -> do
+      putStrLn $ color Red "Invalid arguments: " ++ "Only one file path is allowed."
+      exitFailure
+    Nothing -> return (Just path)
 
 -- The logo "Fin" in ASCII art
 asciiLogo :: String
@@ -149,10 +157,17 @@ asciiLogo = "       _____  _\n" ++
 main :: IO ()
 main = do
   args <- getArgs
-  checkArgs args
-  putStrLn asciiLogo
-  putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
-  input <- multiline
+  maybePath <- checkArgs args
+  input <- case maybePath of
+    Just path -> catch (readFile path)
+        (\e -> do 
+          let _ = (e :: IOException)
+          putStrLn $ color Red "Error:" ++ " Couldn't open file " ++ show path
+          exitFailure)
+    Nothing -> do
+      putStrLn asciiLogo
+      putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
+      multiline
   case tokenize input of
     Right tokens -> do
       -- when the flag "-lex" is enabled
