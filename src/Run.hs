@@ -149,7 +149,7 @@ checkArgs (path : args) = do
 asciiLogo :: String
 asciiLogo = "       _____  _\n" ++
             "      |  ___|(_) _ __\n" ++
-            "      | |_   | || '_ \\\n" ++ 
+            "      | |_   | || '_ \\\n" ++
             "      |  _|  | || | | |\n" ++
             color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
             color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -160,7 +160,7 @@ main = do
   maybePath <- checkArgs args
   input <- case maybePath of
     Just path -> catch (readFile path)
-        (\e -> do 
+        (\e -> do
           let _ = (e :: IOException)
           putStrLn $ color Red "Error:" ++ " Couldn't open file " ++ show path
           exitFailure)

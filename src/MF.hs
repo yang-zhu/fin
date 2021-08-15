@@ -131,7 +131,7 @@ execInstruction (Pushfun f) ms@MachineState {stack, global} =
     Just funAddr -> return ms {stack = HeapAddr funAddr : stack}
     Nothing -> Left $ "Function " ++ f ++ " not found."
 execInstruction (Pushval v) ms@MachineState {stack, heap} =
-  return ms 
+  return ms
     { -- (length heap) is exactly the index of the newly added heap cell
       stack = HeapAddr (length heap) : stack,
       heap = heap |> VAL v

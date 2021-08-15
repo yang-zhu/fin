@@ -56,7 +56,7 @@ type ParseError = String
 -- LocalDefinition := Variable = Expression0
 
 -- Definition := Variable {Variable} = Expression0
--- Program := Definition ; {Definition ;} 
+-- Program := Definition ; {Definition ;}
 
 -- Check if the head of the token list matches the expected token. If it matches, consume the token; Otherwise output an error message
 matchKeywordToken :: String -> [Token] -> Either ParseError [Token]
