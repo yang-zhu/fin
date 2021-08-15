@@ -70,6 +70,8 @@ Fin tells us
 >>> Result: 97
 ```
 
+There are more example programs in the [examples](examples/) folder.
+
 ----
 Group 6: Shiyi Gou, Simon Hehnen, Zhu Yang, Jing Yuan
 <br>
