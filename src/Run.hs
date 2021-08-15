@@ -42,7 +42,7 @@ multiline = do
   s <- getLine
   case s of
     "" -> return s
-    _ -> fmap (s ++) multiline
+    _ -> ((s ++ "\n") ++) <$> multiline
 
 -- Display MF code
 showCode :: MachineState -> String
