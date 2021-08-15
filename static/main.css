@@ -16,7 +16,7 @@ body {
     grid-template-rows:
         var(--subheading_height)
         calc(100vh - var(--subheading_height) - var(--heading_height) - 2 * var(--body_margin) - var(--gap) - 1px);
-    grid-template-columns: repeat(2, 1fr) 180px;
+    grid-template-columns: 1fr 2fr 180px;
     width: 100%;
     gap: var(--gap);
     grid-template-areas:
