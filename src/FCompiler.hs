@@ -2,7 +2,7 @@ module FCompiler where
 
 import qualified Data.Map.Strict as Map
 import Data.Sequence ((|>), (><))
-import qualified Data.Sequence as Sequence
+import qualified Data.Sequence as Seq
 import MF
 import Parser
 
@@ -71,7 +71,7 @@ add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _
       codeRange = ((length code, length code' - 1), f) : codeRange
     }
   where
-    code' = code >< Sequence.fromList (translateDef d)
+    code' = code >< Seq.fromList (translateDef d)
 
 -- Translate the program (multiple function definitions)
 translateProgram :: Program -> MachineState
@@ -81,7 +81,7 @@ translateProgram =
     MachineState
       { pc = 0,
         code =
-          Sequence.fromList
+          Seq.fromList
           [ -- starting point
             Reset,
             Pushfun "main",
@@ -117,7 +117,7 @@ translateProgram =
         -- the stack is modelled as a list where the first element is the top of the stack
         stack = [],
         -- the heap is implemented with a finger tree
-        heap = Sequence.empty,
+        heap = Seq.empty,
         -- the global environment stores all the functions in a map (function name: heap address)
         global = Map.empty,
         -- codeRange is used to map a code address to the function it belongs to (to give more informative error messages)
