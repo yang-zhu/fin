@@ -1,9 +1,12 @@
 module MF where
 
 import qualified Data.Map.Strict as Map
-import Data.Sequence (Seq, index, update, (|>))
-import Data.List (find, intercalate)
+import Data.Sequence (Seq, (|>))
+import qualified Data.Sequence as Seq
+import qualified Data.List as List
 import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Parser
 
 data Value
@@ -93,7 +96,7 @@ extractCodeAddr (cell : cells) = case cell of
 -- Trace back the function, to which a code address belongs
 tracebackFunc :: CodeAddr -> [((Int, Int), String)] -> Maybe String
 tracebackFunc ca codeRange = do
-  (_, f) <- find (\((start, end), _) -> ca >= start && ca <= end) codeRange
+  (_, f) <- List.find (\((start, end), _) -> ca >= start && ca <= end) codeRange
   return f
 
 -- Trace back all the functions in the current stack
@@ -105,7 +108,7 @@ tracebackFuncs MachineState {pc, stack, codeRange} =
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =
-  let i = code `index` pc
+  let i = code `Seq.index` pc
    in if i == Halt
         then return [ms]
         else case execInstruction i ms {pc = pc + 1} of
@@ -114,11 +117,11 @@ runMF ms@MachineState {pc, code} =
             Left (err, mss) -> Left (err, ms : mss)
           Left err -> do
             let funcs = tracebackFuncs ms
-            Left (err ++ "\nTraceback (most recent call first): " ++ intercalate ", " funcs, [ms])
+            Left (err ++ "\nTraceback (most recent call first): " ++ List.intercalate ", " funcs, [ms])
 
 -- Follow the IND cell to find the actual heap cell
 value :: HeapAddr -> Seq HeapCell -> HeapCell
-value addr1 heap = case heap `index` addr1 of
+value addr1 heap = case heap `Seq.index` addr1 of
   IND addr2 -> value addr2 heap
   anything -> anything
 
@@ -238,7 +241,7 @@ execInstruction (UpdateFun n) ms@MachineState {stack = HeapAddr funBody : stack,
     HeapAddr replaced ->
       return
         ms
-          { heap = update replaced (IND funBody) heap
+          { heap = Seq.update replaced (IND funBody) heap
           }
     CodeAddr ca -> Left $ "Expected a heap address, but found code address " ++ show ca ++ "."
 -- replace the heap cell that contains the top APP-node with the result of the operator, top of the stack points to the updated APP-node heap cell
@@ -246,7 +249,7 @@ execInstruction (UpdateFun n) ms@MachineState {stack = HeapAddr funBody : stack,
 execInstruction UpdateOp ms@MachineState {stack = HeapAddr res : ra : HeapAddr replaced : cells, heap} =
   return ms
     { stack = HeapAddr replaced : ra : cells,
-      heap = update replaced (heap `index` res) heap
+      heap = Seq.update replaced (heap `Seq.index` res) heap
     }
 -- replace the right child of the dummy APP-node with its expression graph and pop the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, heap} = do
@@ -258,7 +261,7 @@ execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, hea
     cell -> Left $ "Expected an APP-cell, but found " ++ show cell ++ "."
   return ms
     { stack = cells,
-      heap = update replaced (IND res) heap
+      heap = Seq.update replaced (IND res) heap
     }
 -- allocate UNINIT-cell in the heap and push its address onto the stack
 execInstruction Alloc ms@MachineState {stack, heap} =

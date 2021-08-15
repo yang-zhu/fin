@@ -1,11 +1,11 @@
 module Run where
 
 import qualified Data.Map.Strict as Map
-import Data.Sequence (index)
+import qualified Data.Sequence as Seq
+import qualified Data.List as List
 import Data.Foldable (toList)
 import Data.Tuple (swap)
 import System.Environment (getArgs)
-import Data.List (intercalate)
 import Control.Monad (when)
 import System.Console.Pretty (Color(..), Style(..), color, style)
 import System.Exit (exitFailure)
@@ -22,7 +22,7 @@ run s = case tokenize s of
       Right machinestates ->
         let MachineState {stack, heap} = last machinestates
             HeapAddr hCell = head stack
-            VAL res = heap `index` hCell
+            VAL res = heap `Seq.index` hCell
          in res
       Left (err, _) -> error $ "Runtime error: " ++ err
     Left err -> error $ "Syntax error: " ++ err
@@ -30,7 +30,7 @@ run s = case tokenize s of
 
 -- Display MF code
 showCode :: MachineState -> String
-showCode MachineState {code, codeRange} = intercalate "\n" (map showInstruction codeWithAddrs)
+showCode MachineState {code, codeRange} = List.intercalate "\n" (map showInstruction codeWithAddrs)
   where
     codeWithAddrs :: [(CodeAddr, Instruction)]
     codeWithAddrs = zip [0 ..] (toList code)
@@ -109,8 +109,8 @@ traceMF [] = ""
 traceMF [_] = ""
 traceMF (m1 : m2 : ms) =
   let mergeSH = mergeBlocks (showStack m2) (showHeap m2)
-      mergeAll = mergeBlocks ["I: " ++ show (code m1 `index` pc m1), "P: c" ++ show (pc m2)] mergeSH
-   in intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
+      mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "P: c" ++ show (pc m2)] mergeSH
+   in List.intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
 -- Make a title bold and add a frame around it
 titleStyling :: String -> String
@@ -133,7 +133,7 @@ checkArgs (arg@('-' : _) : args)
   | arg `elem` flags = checkArgs args
   | otherwise = do
     putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
-               ++ "Possible options: " ++ intercalate ", " flags
+               ++ "Possible options: " ++ List.intercalate ", " flags
     exitFailure
     where
       flags = ["-lex", "-parse", "-code", "-step", "-trace"]
@@ -171,11 +171,11 @@ main = do
   case tokenize input of
     Right tokens -> do
       -- when the flag "-lex" is enabled
-      when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ intercalate "\n" (map show tokens) ++ "\n")
+      when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ List.intercalate "\n" (map show tokens) ++ "\n")
       case parseProgram tokens of
         Right program -> do
           -- when the flag "-parse" is enabled
-          when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ intercalate "\n" (map show program) ++ "\n")
+          when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ List.intercalate "\n" (map show program) ++ "\n")
           let ms = translateProgram program
           -- when the flag "-code" is enabled
           when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode ms ++ "\n")
