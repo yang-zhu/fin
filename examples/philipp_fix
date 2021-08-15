@@ -1,0 +1,3 @@
+main = fix summation 100;
+summation recursion n = if n == 0 then n else n + recursion (n - 1);
+fix f x = let g = f g in g x;
