@@ -1,0 +1,5 @@
+main = nextPrime 90;
+nextPrime x = if isPrime x then x else nextPrime (x + 1);
+isPrime x = not hasFactorBelow x x;
+hasFactorBelow x y = if 2 < y then divides (y - 1) x | hasFactorBelow x (y - 1) else false;
+divides x y = let remainder = y - (y / x) * x in remainder == 0; 

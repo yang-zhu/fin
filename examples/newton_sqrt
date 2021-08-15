@@ -1,0 +1,4 @@
+main = sqrt 1024;
+sqrt x = newton x 1;
+newton x old_guess = let new_guess = (old_guess + x / old_guess) / 2 in if abs (new_guess - old_guess) < 1 then new_guess else newton x new_guess;
+abs x = if 0 < x then x else -x;
