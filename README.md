@@ -43,9 +43,9 @@ stack build
 
 The project can be run as follows:
 ```
-stack run -- [flags]
+stack run -- [file path] [flags]
 ```
-The F program has to be given as input on the terminal. It can be multiple lines and is terminated with an empty line. The F program will be parsed, compiled and run automatically.
+The F program can either be given as a file or as input on the terminal. Only one file path can be provided and only one program is allowed in the file. Regarding giving the program on the terminal, it can be multiple lines and is terminated with an empty line. The F program will be parsed, compiled and run automatically.
 
 The possible flags are: `-lex`, `-parse`, `-code`, `-step` and `-trace`.
 
