@@ -5,6 +5,7 @@ import System.Environment (getArgs)
 import System.Console.Pretty (Color(..), Style(..), color, style)
 import System.Exit (exitFailure)
 import Run
+import Control.Exception (catch, IOException)
 
 -- Take in multi-line input until empty line
 multiline :: IO String
@@ -12,11 +13,12 @@ multiline = do
   s <- getLine
   case s of
     "" -> return s
-    _ -> fmap (s ++) multiline
+    _ -> ((s ++ "\n") ++) <$> multiline
 
-checkArgs :: [String] -> IO ()
-checkArgs [] = return ()
-checkArgs (arg : args)
+-- Check if the command line arguments are valid. Otherwise give help information. Return the file path if only one is provided.
+checkArgs :: [String] -> IO (Maybe String)
+checkArgs [] = return Nothing
+checkArgs (arg@('-' : _) : args)
   | arg `elem` flags = checkArgs args
   | otherwise = do
     putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
@@ -24,6 +26,13 @@ checkArgs (arg : args)
     exitFailure
     where
       flags = ["-lex", "-parse", "-code", "-step", "-trace"]
+checkArgs (path : args) = do
+  otherPath <- checkArgs args
+  case otherPath of
+    Just _ -> do
+      putStrLn $ color Red "Invalid arguments: " ++ "Only one file path is allowed."
+      exitFailure
+    Nothing -> return (Just path)
 
 asciiLogo :: String
 asciiLogo = "       _____  _\n" ++
@@ -34,20 +43,26 @@ asciiLogo = "       _____  _\n" ++
             color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 main :: IO ()
-main =
-  do
-    args <- getArgs
-    checkArgs args
-    putStrLn asciiLogo
-    putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
-    input <- multiline
-    putStrLn $
-      runFin
-        Options
-          { lexOpt = "-lex" `elem` args,
-            parseOpt = "-parse" `elem` args,
-            codeOpt = "-code" `elem` args,
-            stepOpt = "-step" `elem` args,
-            traceOpt = "-trace" `elem` args
-          }
-        input
+main = do
+  args <- getArgs
+  maybePath <- checkArgs args
+  input <- case maybePath of
+    Just path -> catch (readFile path)
+        (\e -> do 
+          let _ = (e :: IOException)
+          putStrLn $ color Red "Error:" ++ " Couldn't open file " ++ show path
+          exitFailure)
+    Nothing -> do
+      putStrLn asciiLogo
+      putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
+      multiline
+  putStrLn $
+    runFin
+      Options
+        { lexOpt = "-lex" `elem` args,
+          parseOpt = "-parse" `elem` args,
+          codeOpt = "-code" `elem` args,
+          stepOpt = "-step" `elem` args,
+          traceOpt = "-trace" `elem` args
+        }
+      input
