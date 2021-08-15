@@ -26,7 +26,7 @@ LocalDefinitions := LocalDefinition {; LocalDefinition}
 LocalDefinition := Variable = Expression0
 
 Definition := Variable {Variable} = Expression0
-Program := Definition ; {Definition ;} 
+Program := Definition ; {Definition ;}
 ```
 - [`FCompiler.hs`](src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
 - [`MF.hs`](src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.
@@ -62,7 +62,7 @@ main = nextPrime 90;
 nextPrime x = if isPrime x then x else nextPrime (x + 1);
 isPrime x = not hasFactorBelow x x;
 hasFactorBelow x y = if 2 < y then divides (y - 1) x | hasFactorBelow x (y - 1) else false;
-divides x y = let remainder = y - (y / x) * x in remainder == 0; 
+divides x y = let remainder = y - (y / x) * x in remainder == 0;
 ```
 
 Fin tells us

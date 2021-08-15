@@ -81,7 +81,7 @@ translateProgram =
     MachineState
       { pc = 0,
         code =
-          Sequence.fromList 
+          Sequence.fromList
           [ -- starting point
             Reset,
             Pushfun "main",

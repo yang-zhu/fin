@@ -150,7 +150,7 @@ checkArgs (arg : args)
 asciiLogo :: String
 asciiLogo = "       _____  _\n" ++
             "      |  ___|(_) _ __\n" ++
-            "      | |_   | || '_ \\\n" ++ 
+            "      | |_   | || '_ \\\n" ++
             "      |  _|  | || | | |\n" ++
             color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
             color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
