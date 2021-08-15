@@ -187,7 +187,7 @@ main = do
               when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
               let MachineState {stack, heap} = last machinestates
               let HeapAddr hCell = head stack
-              let VAL res = heap `index` hCell
+              let VAL res = value hCell heap
               putStrLn $ ">>> Result: " ++ show res
             Left (err, machinestates) -> do
               -- still print the trace when there is an error
