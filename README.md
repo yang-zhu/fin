@@ -55,6 +55,13 @@ The possible flags are: `-lex`, `-parse`, `-code`, `-step` and `-trace`.
 - `-step`: Output the number of execution steps.
 - `-trace`: Output the trace of the MF execution.
 
+## How to test Fin
+
+The project can be tested as follows:
+```
+stack test
+```
+
 ## Example
 The following F program computes the next prime number after 90.
 ```
