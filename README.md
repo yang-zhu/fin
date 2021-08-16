@@ -62,6 +62,11 @@ The project can be tested as follows:
 stack test
 ```
 
+Run individual tests as follows:
+```
+stack test --ta '--match "/the implementation/can approximate square root/"'
+```
+
 ## Example
 The following F program computes the next prime number after 90.
 ```
