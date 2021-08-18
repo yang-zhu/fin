@@ -31,7 +31,7 @@ emulate s = case tokenize s of
 result :: [MachineState] -> MF.Value
 result machinestates =
   let MachineState {stack, heap} = last machinestates
-      HeapAddr hCell = head stack
+      hCell = head stack
       VAL res = value hCell heap
    in res
 
