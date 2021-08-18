@@ -35,7 +35,7 @@ translateExpr (Let localDefs e) pos =
     ++ [SlideLet (length localDefs)]
   where
     variables = [v | LocalDef v _ <- localDefs]
-    varPos = zip (reverse variables) [-1 ..]
+    varPos = zip (reverse variables) [0 ..]
     numVars = length variables
     pos' = varPos ++ map (\(x, y) -> (x, y + numVars)) pos
     -- recursive let in Haskell does not allow pos = varPos ++ map (\(x,y) -> (x, y + numVars)) pos, because the pos in the body refers to the newly defined pos
@@ -118,6 +118,7 @@ translateProgram =
           ],
         -- the stack is modelled as a list where the first element is the top of the stack
         stack = [],
+        returnStack = [],
         -- the heap is implemented with a finger tree
         heap = Seq.empty,
         -- the global environment stores all the functions in a map (function name: heap address)
