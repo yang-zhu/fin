@@ -25,7 +25,7 @@ run s = case tokenize s of
     Right program -> case runMF $ translateProgram program of
       Right machinestates ->
         let MachineState {stack, heap} = last machinestates
-            HeapAddr hCell = head stack
+            hCell = head stack
             VAL res = value hCell heap
          in res
       Left (err, _) -> error $ "Runtime error: " ++ err
@@ -47,16 +47,16 @@ showCode MachineState {code, codeRange} = List.intercalate "\n" (map showInstruc
       Nothing -> padString 6 ("c" ++ show ca ++ ":") ++ show instruction
 
 showStack :: MachineState -> [String]
-showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
+showStack MachineState {stack} = map showStackCell cellWithAddrs
   where
-    cellWithAddrs :: [(Int, StackCell)]
+    cellWithAddrs :: [(Int, HeapAddr)]
     cellWithAddrs = zip [0 ..] stack
 
-    showStackCell :: (Int, StackCell) -> String
-    showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
-      Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
-      Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
-    showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ show cell
+    showStackCell :: (Int, HeapAddr) -> String
+    -- showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
+    --   Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
+    --   Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
+    showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ "h" ++ show cell
     -- showStackCell (i, HeapAddr ha) = padString 5 ("s" ++ show i ++ ":") ++ show (HeapAddr ha) ++ if ha < Seq.length heap then " (" ++ show (value ha heap) ++ ")" else "(INVALID ADDRESS)"
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
@@ -124,7 +124,7 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                          Right machinestates ->
                            (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
                              ++ let MachineState {stack, heap} = last machinestates
-                                    HeapAddr hCell = head stack
+                                    hCell = head stack
                                     VAL res = value hCell heap
                                  in ">>> Result: " ++ show res
                          Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
