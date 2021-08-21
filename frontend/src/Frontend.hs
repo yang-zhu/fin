@@ -18,7 +18,6 @@ import qualified Data.Map.Strict as M
 import Data.Map.Strict (Map)
 import Language.Javascript.JSaddle (eval, liftJSM)
 import GHCJS.DOM.Element (setScrollTop, getScrollHeight)
-import GHCJS.DOM.Types (IsElement)
 
 import Obelisk.Frontend
 import Obelisk.Configs
@@ -63,13 +62,13 @@ application = do
       elAttr "span" ("class" =: "emphasize") (text "MF")
       text " code"
     input <- fmap value $ textAreaElement $
-      textAreaElementConfig_elementConfig . initialAttributes
+      initialAttributes
         .~ M.mapKeys (AttributeName Nothing) ("id" =: "input") $
       def
-    textAreaElementDynValueScrollBottom
+    _ <- textAreaElementDynValueScrollBottom
       (runFinText <$> options <*> input)
       (
-        textAreaElementConfig_elementConfig . initialAttributes
+        initialAttributes
           .~ M.mapKeys (AttributeName Nothing) ("id" =: "output" <> "readonly" =: "readonly") $
         def
       )
