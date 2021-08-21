@@ -82,16 +82,16 @@ instance Show HeapCell where
   show (IND ha) = "IND h" ++ show ha
   show UNINIT = "UNINITIALIZED"
 
--- Trace back all the functions in the current returnStack
+tracebackFunc :: CodeAddr -> [((Int, Int), String)] -> Maybe String
+tracebackFunc ca codeRange = do
+  (_, f) <- List.find (\((start, end), _) -> ca >= start && ca <= end) codeRange
+  return f
+
+-- Trace back all the functions in the current stack
 tracebackFuncs :: MachineState -> [String]
-tracebackFuncs MachineState {pc, returnStack, codeRange} = 
-  catMaybes [tracebackFunc ca | ca <- pc : returnStack]
-  where
-    -- Trace back the function, to which a code address belongs
-    tracebackFunc :: CodeAddr -> Maybe String
-    tracebackFunc ca = do
-      (_, f) <- List.find (\((start, end), _) -> ca >= start && ca <= end) codeRange
-      return f
+tracebackFuncs MachineState {pc, returnStack, codeRange} =
+  let funcs = [tracebackFunc ca codeRange | ca <- pc:returnStack]
+   in catMaybes funcs
 
 followPointer :: HeapAddr -> Seq HeapCell -> Set HeapAddr -> Set HeapAddr
 followPointer ha heap reachable =
@@ -111,9 +111,9 @@ reachableCells ms@MachineState{heap, reachable} (ha : has) =
 collectGarbage :: MachineState -> MachineState
 collectGarbage ms@MachineState{global, stack, heap, gcInterval} =
   let
-    reachable' = reachable (reachableCells ms stack)
+    reachable' = reachable (reachableCells ms (stack ++ Map.elems global))
     freeList = filter (`Set.notMember` reachable') [0..Seq.length heap - 1]
-  in ms {reachable = Set.fromList (Map.elems global), freeList = freeList, gcInterval = gcInterval * 2}
+  in ms {reachable = Set.empty, freeList = freeList, gcInterval = gcInterval * 2}
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =

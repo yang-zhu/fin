@@ -53,11 +53,16 @@ showStack MachineState {stack} = map showStackCell cellWithAddrs
     cellWithAddrs = zip [0 ..] stack
 
     showStackCell :: (Int, HeapAddr) -> String
-    -- showStackCell (i, CodeAddr ca) = case tracebackFunc ca codeRange of
-    --   Just f -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca) ++ " (" ++ f ++ ")"
-    --   Nothing -> padString 5 ("s" ++ show i ++ ":") ++ show (CodeAddr ca)
     showStackCell (i, cell) = padString 5 ("s" ++ show i ++ ":") ++ "h" ++ show cell
-    -- showStackCell (i, HeapAddr ha) = padString 5 ("s" ++ show i ++ ":") ++ show (HeapAddr ha) ++ if ha < Seq.length heap then " (" ++ show (value ha heap) ++ ")" else "(INVALID ADDRESS)"
+    -- showStackCell (i, ha) = padString 5 ("s" ++ show i ++ ":") ++ "h" ++ show ha ++ if ha < Seq.length heap then " (" ++ show (value ha heap) ++ ")" else "(INVALID ADDRESS)"
+
+showReturnStack :: MachineState -> [String]
+showReturnStack MachineState {returnStack, codeRange} = map showReturnStackCell returnStack
+  where
+    showReturnStackCell :: CodeAddr -> String
+    showReturnStackCell ca = case tracebackFunc ca codeRange of
+      Just f -> "c" ++ show ca ++ " (" ++ f ++ ")"
+      Nothing -> "c" ++ show ca 
 
 reverseMap :: (Ord a, Ord b) => Map.Map a b -> Map.Map b a
 reverseMap = Map.fromList . map swap . Map.toList
@@ -91,7 +96,7 @@ padStrings minLen strings = map (padString len) strings
     len = max (maximum $ map length strings) minLen
 
 mergeBlocks :: [String] -> [String] -> [String]
-mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 paddedBlock2
+mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ "    " ++ s2) paddedBlock1 paddedBlock2
   where
     (block1', block2') = padBlock (block1, block2)
     paddedBlock1 = padStrings 25 block1'
@@ -101,7 +106,8 @@ traceMF :: [MachineState] -> String
 traceMF [] = ""
 traceMF [_] = ""
 traceMF (m1 : m2 : ms) =
-  let mergeSH = mergeBlocks (showStack m2) (showHeap m2)
+  let mergeStacks = mergeBlocks (showStack m2) (showReturnStack m2)
+      mergeSH = mergeBlocks mergeStacks (showHeap m2)
       mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "P: c" ++ show (pc m2)] mergeSH
    in List.intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
