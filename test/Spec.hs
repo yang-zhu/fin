@@ -322,6 +322,9 @@ spec = do
             \                        else n + recursion (n - 1); \
             \fix f x = let g = f g in g x;"
       `shouldBe` Right (Integer 5050)
+  describe "higher order functions" $ do
+    it "work" $
+      eval "main = f 5; f = id; id a = a;" `shouldBe` Right (Integer 5)
 
 k1 :: Text
 k1 = " k1 a b = b;"
