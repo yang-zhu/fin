@@ -104,9 +104,9 @@ translateProgram =
             Unwind,
             Call,
             OperatorIf,
-            Unwind,
-            Call,
             UpdateOp,
+            Unwind,
+            Call,            
             Return,
             -- unary operators
             Pushparam 1,
