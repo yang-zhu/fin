@@ -28,11 +28,9 @@ data Instruction
   | Operator1
   | Operator2
   | OperatorIf
-  | UpdateFun Int
-  | UpdateOp
+  | Update Int
   | UpdateLet Int
   | Alloc
-  | SlideLet Int
   | Halt
   deriving (Eq, Show)
 
@@ -162,7 +160,7 @@ execInstruction Makeapp ms@MachineState {stack = first : second : _} =
     ms' = allocate ms (APP first second)
     (appCell : cells) = stack ms'
    in return ms' {stack = appCell : drop 2 cells}
--- clean up the stack by removing the slots produced by Unwind, only the unevaluated body and the return address are kept
+-- clean up the stack by removing the slots produced by Unwind
 execInstruction (Slide n) ms@MachineState {stack = funBody : cells} =
   return ms {stack = funBody : drop n cells}
 -- unfold the function graph until it hits a non-APP-node
@@ -173,9 +171,9 @@ execInstruction Unwind ms@MachineState {pc, stack = stack@(top : _), heap} =
 execInstruction Call ms@MachineState {pc, stack = top : _, returnStack, heap} =
   case value top heap of
     DEF addr -> return ms {pc = addr, returnStack = pc : returnStack}
-    PRE (UnOp _) -> return ms {pc = 21, returnStack = pc : returnStack}
-    PRE (BinOp _) -> return ms {pc = 4, returnStack = pc : returnStack}
-    PRE IfOp -> return ms {pc = 13, returnStack = pc : returnStack}
+    PRE (UnOp _) -> return ms {pc = 4, returnStack = pc : returnStack}
+    PRE (BinOp _) -> return ms {pc = 11, returnStack = pc : returnStack}
+    PRE IfOp -> return ms {pc = 21, returnStack = pc : returnStack}
     _ -> return ms
 execInstruction Return ms@MachineState {returnStack} =
   return ms
@@ -192,7 +190,7 @@ execInstruction Operator1 ms@MachineState {stack = operand : opAddr : cells, hea
     (Neg, IntValue x) -> Right $ IntValue (negate x)
     (Not, _) -> Left $ "Expected a truth value, but found " ++ show v ++ "."
     (Neg, _) -> Left $ "Expected a number, but found " ++ show v ++ "."
-  return $ allocate ms {stack = cells} (VAL evalOpExpr)
+  return $ allocate ms {stack = opAddr : cells} (VAL evalOpExpr)
   where
     PRE (UnOp op) = value opAddr heap
 execInstruction Operator2 ms@MachineState {stack = sndOperand : fstOperand : opAddr : cells, heap} = do
@@ -217,33 +215,25 @@ execInstruction Operator2 ms@MachineState {stack = sndOperand : fstOperand : opA
     (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
     (Divide, IntValue x1, IntValue x2) -> Right $ IntValue (x1 `div` x2)
     (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
-  return $ allocate ms {stack = drop 1 cells} (VAL evalOpExpr)
+  return $ allocate ms {stack = opAddr : cells} (VAL evalOpExpr)
   where
     PRE (BinOp op) = value opAddr heap
-execInstruction OperatorIf ms@MachineState {stack = condition : _ : _ : thenAddr : elseAddr : cells, heap} = do
+execInstruction OperatorIf ms@MachineState {stack = condition : cells@(_ : _ : thenAddr : elseAddr : _), heap} = do
   cond <- case value condition heap of
     VAL (BoolValue cond) -> Right cond
     x -> Left $ "Expected a truth value, but found " ++ show x ++ "."
   return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower two APP-nodes are removed
-      stack =
+    { stack =
         if cond
-          then thenBranch : elseAddr : cells
-          else elseBranch : elseAddr : cells
+          then thenBranch : cells
+          else elseBranch : cells
     }
   where
     APP _ thenBranch = value thenAddr heap
     APP _ elseBranch = value elseAddr heap
--- convert the heap cell that contains the top APP-node of a function application graph into an IND-cell that points at the the result of the function application -> lazy evaluation
-execInstruction (UpdateFun n) ms@MachineState {stack = funBody : stack, heap} =
-  return ms {heap = Seq.update (stack !! n) (IND funBody) heap}
--- replace the heap cell that contains the top APP-node with the result of the operator, top of the stack points to the updated APP-node heap cell
--- attention: lower app nodes are already cleaned up by the Operator instruction, different from normal functions that rely on Slide to clean up
-execInstruction UpdateOp ms@MachineState {stack = res : replaced : cells, heap} =
-  return ms
-    { stack = replaced : cells,
-      heap = Seq.update replaced (heap `Seq.index` res) heap
-    }
+-- convert the heap cell that contains the top APP-node of a graph into an IND-cell that points at the the result -> lazy evaluation
+execInstruction (Update n) ms@MachineState {stack = res : cells, heap} =
+  return ms {heap = Seq.update (cells !! n) (IND res) heap}
 -- replace the right child of the dummy APP-node with its expression graph and pop the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState {stack = res : cells, heap} = do
   replaced <- case value (cells !! n) heap of  -- cells !! n: the heap cell of the right hand side expression
@@ -255,7 +245,4 @@ execInstruction (UpdateLet n) ms@MachineState {stack = res : cells, heap} = do
     }
 -- allocate UNINIT-cell in the heap and push its address onto the stack
 execInstruction Alloc ms = return $ allocate ms UNINIT
--- clean up dummy APP-nodes for local definitions on the stack
-execInstruction (SlideLet n) ms@MachineState {stack = res : cells} =
-  return ms {stack = res : drop n cells}
 execInstruction i _ = Left $ "Cannot execute " ++ show i ++ "."

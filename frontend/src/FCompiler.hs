@@ -11,7 +11,7 @@ import Parser
 translateDef :: Definition -> [Instruction]
 translateDef (Definition _ args body) =
   translateExpr body pos
-    ++ [UpdateFun (length args), Slide (length args + 1), Unwind, Call, Return]
+    ++ [Update (length args), Slide (length args + 1), Unwind, Call, Return]
   where
     -- pos is a list of pairs (variable, variable's position in the stack)
     pos = zip args [1 ..]
@@ -32,7 +32,7 @@ translateExpr (Let localDefs e) pos =
   concat (replicate (length localDefs) [Alloc, Alloc, Makeapp])
     ++ translateLocalDefs localDefs pos'
     ++ translateExpr e pos'
-    ++ [SlideLet (length localDefs)]
+    ++ [Slide (length localDefs)]
   where
     variables = [v | LocalDef v _ <- localDefs]
     varPos = zip (reverse variables) [0 ..]
@@ -67,10 +67,10 @@ add1Definition :: MachineState -> Definition -> MachineState
 add1Definition ms@MachineState {code, heap, global, codeRange, reachable} d@(Definition f _ _) =
   ms
     { code = code',
-      heap = heap |> DEF (length code),
+      heap = heap |> DEF (Seq.length code),
       global = Map.insert f (length heap) global,
-      codeRange = ((length code, length code' - 1), f) : codeRange,
-      reachable = Set.insert (length heap) reachable
+      codeRange = ((Seq.length code, Seq.length code' - 1), f) : codeRange,
+      reachable = Set.insert (Seq.length heap) reachable
     }
   where
     code' = code >< Seq.fromList (translateDef d)
@@ -89,6 +89,14 @@ translateProgram =
             Pushfun "main",
             Call,
             Halt,
+            -- unary operators
+            Pushparam 1,
+            Unwind,
+            Call,
+            Operator1,
+            Update 1,
+            Slide 2,
+            Return,
             -- binary operators
             Pushparam 1,
             Unwind,
@@ -97,23 +105,18 @@ translateProgram =
             Unwind,
             Call,
             Operator2,
-            UpdateOp,
+            Update 2,
+            Slide 3,
             Return,
             -- if-then-else
             Pushparam 1,
             Unwind,
             Call,
             OperatorIf,
-            UpdateOp,
+            Update 3,
+            Slide 4,
             Unwind,
             Call,            
-            Return,
-            -- unary operators
-            Pushparam 1,
-            Unwind,
-            Call,
-            Operator1,
-            UpdateOp,
             Return
           ],
         -- the stack is modelled as a list where the first element is the top of the stack
