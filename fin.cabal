@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -21,9 +21,8 @@ library
       Paths_fin
   hs-source-dirs:
       src
-  default-extensions:
-      NamedFieldPuns
-  ghc-options: -Wall
+  default-extensions: NamedFieldPuns
+  ghc-options: -Wall -Wno-name-shadowing
   build-depends:
       base >=4.7 && <5
     , containers
@@ -36,9 +35,8 @@ executable fin-exe
       Paths_fin
   hs-source-dirs:
       app
-  default-extensions:
-      NamedFieldPuns
-  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions: NamedFieldPuns
+  ghc-options: -Wall -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
@@ -54,13 +52,13 @@ test-suite fin-test
       Paths_fin
   hs-source-dirs:
       test
-  default-extensions:
-      NamedFieldPuns
-  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions: NamedFieldPuns
+  ghc-options: -Wall -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , fin
     , hspec
+    , raw-strings-qq
     , text
   default-language: Haskell2010

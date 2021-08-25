@@ -9,6 +9,7 @@ dependencies:
 
 ghc-options:
   - -Wall
+  - -Wno-name-shadowing
 
 default-extensions:
 - NamedFieldPuns # https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
@@ -45,3 +46,4 @@ tests:
     - hspec
     - text
     - containers
+    - raw-strings-qq

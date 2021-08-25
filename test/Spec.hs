@@ -1,16 +1,21 @@
+{-# OPTIONS_GHC
+  -Wno-unused-top-binds
+#-}
+
 {-# language
+  QuasiQuotes,
   OverloadedStrings,
   LambdaCase
 #-}
 
 import FInterface
 
-import Data.Either (isLeft)
 import Test.Hspec
 import Test.Hspec.Runner
   (runSpec, defaultConfig, evaluateSummary, configFormatter)
 import Test.Hspec.Formatters (progress)
 import Data.Text (Text)
+import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = do
@@ -325,6 +330,59 @@ spec = do
   describe "higher order functions" $ do
     it "work" $
       eval "main = f 5; f = id; id a = a;" `shouldBe` Right (Integer 5)
+    it "can compute the fifth prime number" $ do
+      eval prime4Code `shouldBe` Right (Integer 11)
+
+prime4Code :: Text
+prime4Code =
+  [r|
+    main =
+      drop 4 (foldr primesHelp nil (enumFrom 2)) k0 (-1);
+
+    primes = foldr primesHelp nil (enumFrom 2);
+    primesHelp head tail =
+      cons head (filter (dividesNot head) tail);
+    divides x y =
+      let remainder = y - (y / x) * x
+      in remainder == 0;
+
+    dividesNot x y = not (divides x y);
+
+    enumFrom lower = cons lower (enumFrom (lower+1));
+
+    enumFromTo lower upper =
+      if upper < lower
+      then nil
+      else cons lower (enumFromTo (lower+1) upper);
+
+    filter predicate =
+      foldr (filterHelp predicate) nil;
+    filterHelp predicate head tail =
+      if predicate head
+      then cons head tail
+      else tail;
+
+    sum = foldr add 0;
+    add a b = a + b;
+
+    cons head tail consResult nilResult =
+      consResult head tail;
+
+    nil consResult nilResult = nilResult;
+
+    k0 a b = a;
+    k1 a b = b;
+
+    foldr f seed list = list (foldrHelp f seed) seed;
+    foldrHelp f seed head tail =
+      f head (foldr f seed tail);
+
+    drop n list =
+      if n == 0
+      then list
+      else list (dropHelp n) nil;
+    dropHelp n head tail = drop (n-1) tail;
+  |]
 
 k1 :: Text
 k1 = " k1 a b = b;"
@@ -346,4 +404,4 @@ hspecProgress spec =
   evaluateSummary
     =<< runSpec spec (defaultConfig {configFormatter = Just progress})
 
--- $> hspecProgress spec
+-- > hspecProgress spec
