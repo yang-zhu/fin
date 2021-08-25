@@ -44,3 +44,4 @@ tests:
     - fin
     - hspec
     - text
+    - containers

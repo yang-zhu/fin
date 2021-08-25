@@ -26,7 +26,7 @@ run s = case tokenize s of
       Right machinestates ->
         let MachineState {stack, heap} = last machinestates
             hCell = head stack
-            VAL res = value hCell heap
+            VAL res = heap `Seq.index` hCell
          in res
       Left (err, _) -> error $ "Runtime error: " ++ err
     Left err -> error $ "Syntax error: " ++ err
@@ -110,6 +110,7 @@ traceMF (m1 : m2 : ms) =
       mergeSH = mergeBlocks mergeStacks (showHeap m2)
       mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "P: c" ++ show (pc m2)] mergeSH
    in List.intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
+   -- "\nFree List: " ++ show (freeList m2) ++ "\nReachable: " ++ show (reachable m2) ++
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
@@ -131,7 +132,7 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                            (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
                              ++ let MachineState {stack, heap} = last machinestates
                                     hCell = head stack
-                                    VAL res = value hCell heap
+                                    VAL res = heap `Seq.index` hCell
                                  in ">>> Result: " ++ show res
                          Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
           Left err -> color Red "Syntax error: " ++ err

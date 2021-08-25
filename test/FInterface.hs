@@ -1,5 +1,6 @@
 module FInterface where
 
+import qualified Data.Sequence as Seq
 import Lexer (tokenize)
 import Parser (parseProgram)
 import FCompiler (translateProgram)
@@ -32,7 +33,7 @@ result :: [MachineState] -> MF.Value
 result machinestates =
   let MachineState {stack, heap} = last machinestates
       hCell = head stack
-      VAL res = value hCell heap
+      VAL res = heap `Seq.index` hCell
    in res
 
 eval :: Text -> Either String Value

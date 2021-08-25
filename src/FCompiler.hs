@@ -11,7 +11,7 @@ import Parser
 translateDef :: Definition -> [Instruction]
 translateDef (Definition _ args body) =
   translateExpr body pos
-    ++ [Update (length args), Slide (length args + 1), Unwind, Call, Return]
+    ++ [Slide (length args), Update, Unwind, Call, Return]
   where
     -- pos is a list of pairs (variable, variable's position in the stack)
     pos = zip args [1 ..]
@@ -64,13 +64,12 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code, heap, global, codeRange, reachable} d@(Definition f _ _) =
+add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _ _) =
   ms
     { code = code',
       heap = heap |> DEF (Seq.length code),
       global = Map.insert f (length heap) global,
-      codeRange = ((Seq.length code, Seq.length code' - 1), f) : codeRange,
-      reachable = Set.insert (Seq.length heap) reachable
+      codeRange = ((Seq.length code, Seq.length code' - 1), f) : codeRange
     }
   where
     code' = code >< Seq.fromList (translateDef d)
@@ -94,8 +93,8 @@ translateProgram =
             Unwind,
             Call,
             Operator1,
-            Update 1,
-            Slide 2,
+            Slide 1,
+            Update,
             Return,
             -- binary operators
             Pushparam 1,
@@ -105,16 +104,16 @@ translateProgram =
             Unwind,
             Call,
             Operator2,
-            Update 2,
-            Slide 3,
+            Slide 2,
+            Update,
             Return,
             -- if-then-else
             Pushparam 1,
             Unwind,
             Call,
             OperatorIf,
-            Update 3,
-            Slide 4,
+            Slide 3,
+            Update,
             Unwind,
             Call,            
             Return
