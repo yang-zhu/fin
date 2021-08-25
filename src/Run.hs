@@ -110,7 +110,7 @@ traceMF (m1 : m2 : ms) =
       mergeSH = mergeBlocks mergeStacks (showHeap m2)
       mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "P: c" ++ show (pc m2)] mergeSH
    in List.intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
-   -- "\nFree List: " ++ show (freeList m2) ++ "\nReachable: " ++ show (reachable m2) ++
+   -- "\nFree List: " ++ show (freeList m2) ++
 
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
