@@ -59,7 +59,6 @@ data MachineState = MachineState
     heap :: Seq HeapCell,
     global :: Map.Map String HeapAddr,
     codeRange :: [((Int, Int), String)],
-    reachable :: Set HeapAddr,
     freeList :: [HeapAddr],
     gcInterval :: Int
   }
@@ -97,17 +96,15 @@ followPointer ha heap reachable =
       _ -> Set.insert ha reachable
     else reachable
 
-reachableCells :: MachineState -> [HeapAddr] -> MachineState
-reachableCells ms [] = ms
-reachableCells ms@MachineState {heap, reachable} (ha : has) =
-  let reachable' = followPointer ha heap reachable
-   in reachableCells ms {reachable = reachable'} has
+reachableCells :: [HeapAddr] -> Seq HeapCell -> Set HeapAddr -> Set HeapAddr
+reachableCells [] _ reachable = reachable
+reachableCells (ha : has) heap reachable = reachableCells has heap (followPointer ha heap reachable)
 
 collectGarbage :: MachineState -> MachineState
 collectGarbage ms@MachineState {global, stack, heap, gcInterval} =
-  let reachable' = reachable (reachableCells ms (stack ++ Map.elems global))
-      freeList = filter (`Set.notMember` reachable') [0 .. Seq.length heap - 1]
-   in ms {reachable = Set.empty, freeList = freeList, gcInterval = gcInterval * 2}
+  let reachable = reachableCells (stack ++ Map.elems global) heap Set.empty
+      freeList = filter (`Set.notMember` reachable) [0 .. Seq.length heap - 1]
+   in ms {freeList = freeList, gcInterval = gcInterval * 2}
 
 runMF :: MachineState -> Either (MFError, [MachineState]) [MachineState]
 runMF ms@MachineState {pc, code} =

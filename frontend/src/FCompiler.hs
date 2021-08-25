@@ -3,7 +3,6 @@ module FCompiler where
 import qualified Data.Map.Strict as Map
 import Data.Sequence ((|>), (><))
 import qualified Data.Sequence as Seq
-import qualified Data.Set as Set
 import MF
 import Parser
 
@@ -127,7 +126,6 @@ translateProgram =
         global = Map.empty,
         -- codeRange is used to map a code address to the function it belongs to (to give more informative error messages)
         codeRange = [],
-        reachable = Set.empty,
         freeList = [],
         gcInterval = 10
       }
