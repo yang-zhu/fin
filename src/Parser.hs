@@ -45,7 +45,7 @@ type ParseError = String
 -- LocalDefinition ::= Variable = Expression1
 -- AtomicExpression ::= Variable | Literal | ( Expression1 )
 --                    | \ {Variable} . Expression1
---                    | if Expression0 then Expression1 else Expression1
+--                    | if Expression1 then Expression1 else Expression1
 --                    | let LocalDefinitions in Expression1
 -- Expression8 ::= AtomicExpression {AtomicExpression}
 -- Expression7 ::= [-] Expression8
