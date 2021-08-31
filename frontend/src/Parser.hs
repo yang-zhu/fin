@@ -286,42 +286,43 @@ freeVars (Let localDefs e) = Set.union (Set.difference (localDefFreeVars localDe
 lambdaLiftDef :: Definition -> [Definition]
 lambdaLiftDef (Definition v vs e) = Definition v vs e' : defs
   where
-    (e', defs) = lambdaLiftExpr e 0
+    (e', defs) = lambdaLiftExpr (Set.fromList vs) e 0
 
-    lambdaLiftExpr :: Expression -> Int -> (Expression, [Definition])
-    lambdaLiftExpr e i = case e of
+    lambdaLiftExpr :: Set Variable -> Expression -> Int -> (Expression, [Definition])
+    lambdaLiftExpr bound e i = case e of
       Lambda vs body ->
-        let (body', defs) = lambdaLiftExpr body (i + 1)
+        let (body', defs) = lambdaLiftExpr (Set.union bound (Set.fromList vs)) body (i + 1)
             newFuncName = "$" ++ v ++ "_" ++ show i
-            freeVariables = Set.toList (freeVars e)
+            freeVariables = Set.toList (Set.intersection bound (freeVars e))
          in (foldl FuncApp (Var newFuncName) [Var v | v <- freeVariables], Definition newFuncName (freeVariables ++ vs) body' : defs)
       FuncApp e1 e2 ->
-        let (e1', defs1) = lambdaLiftExpr e1 i
-            (e2', defs2) = lambdaLiftExpr e2 (i + length defs1)
+        let (e1', defs1) = lambdaLiftExpr bound e1 i
+            (e2', defs2) = lambdaLiftExpr bound e2 (i + length defs1)
          in (FuncApp e1' e2', defs1 ++ defs2)
       Unary op e ->
-        let (e', defs) = lambdaLiftExpr e i
+        let (e', defs) = lambdaLiftExpr bound e i
          in (Unary op e', defs)
       Binary e1 op e2 ->
-        let (e1', defs1) = lambdaLiftExpr e1 i
-            (e2', defs2) = lambdaLiftExpr e2 (i + length defs1)
+        let (e1', defs1) = lambdaLiftExpr bound e1 i
+            (e2', defs2) = lambdaLiftExpr bound e2 (i + length defs1)
          in (Binary e1' op e2', defs1 ++ defs2)
       If e1 e2 e3 ->
-        let (e1', defs1) = lambdaLiftExpr e1 i
-            (e2', defs2) = lambdaLiftExpr e2 (i + length defs1)
-            (e3', defs3) = lambdaLiftExpr e3 (i + length defs1 + length defs2)
+        let (e1', defs1) = lambdaLiftExpr bound e1 i
+            (e2', defs2) = lambdaLiftExpr bound e2 (i + length defs1)
+            (e3', defs3) = lambdaLiftExpr bound e3 (i + length defs1 + length defs2)
          in (If e1' e2' e3', defs1 ++ defs2 ++ defs3)
       Let localDefs e ->
-        let (localDefs', defs1) = lambdaLiftLocalDefs localDefs i
-            (e', defs2) = lambdaLiftExpr e (i + length defs)
+        let bound' = Set.union bound (Set.fromList [v | LocalDef v _ <- localDefs])
+            (localDefs', defs1) = lambdaLiftLocalDefs bound' localDefs i
+            (e', defs2) = lambdaLiftExpr bound' e (i + length defs)
          in (Let localDefs' e', defs1 ++ defs2)
       otherExpr -> (otherExpr, [])
 
-    lambdaLiftLocalDefs :: [LocalDefinition] -> Int -> ([LocalDefinition], [Definition])
-    lambdaLiftLocalDefs [] _ = ([], [])
-    lambdaLiftLocalDefs (LocalDef v e : localDefs) i =
-      let (e', def) = lambdaLiftExpr e i
-          (es, defs) = lambdaLiftLocalDefs localDefs (i + length def)
+    lambdaLiftLocalDefs :: Set Variable -> [LocalDefinition] -> Int -> ([LocalDefinition], [Definition])
+    lambdaLiftLocalDefs _ [] _ = ([], [])
+    lambdaLiftLocalDefs bound (LocalDef v e : localDefs) i =
+      let (e', def) = lambdaLiftExpr bound e i
+          (es, defs) = lambdaLiftLocalDefs bound localDefs (i + length def)
        in (LocalDef v e' : es, def ++ defs)
 
 lambdaLiftProg :: Program -> Program
