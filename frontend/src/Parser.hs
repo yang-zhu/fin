@@ -42,7 +42,7 @@ type ParseError = String
 
 -- Grammar:
 -- LocalDefinitions ::= LocalDefinition {; LocalDefinition}
--- LocalDefinition ::= Variable = Expression1
+-- LocalDefinition ::= Variable {Variable} = Expression1
 -- AtomicExpression ::= Variable | Literal | ( Expression1 )
 --                    | \ {Variable} . Expression1
 --                    | if Expression0 then Expression1 else Expression1
@@ -59,7 +59,7 @@ type ParseError = String
 -- Expression1 ::= Expression2 [| Expression1]
 
 -- Definition ::= Variable {Variable} = Expression1
--- Program ::= Definition ; {Definition ;} 
+-- Program ::= Definition ; {Definition ;}
 
 -- Check if the head of the token list matches the expected token. If it matches, consume the token; Otherwise output an error message
 matchKeywordToken :: String -> [Token] -> Either ParseError [Token]
@@ -233,22 +233,6 @@ parseExpr1 ts = do
       (e2, rest) <- parseExpr1 ts'
       return (If e1 (TruthValue True) e2, rest)
     _ -> return (e1, ts')
-
--- Parse if-then-else and let expressions
--- parseExpr0 :: [Token] -> Either ParseError (Expression, [Token])
--- parseExpr0 (KeywordToken _ _ "if" : ts1) = do
---   (e1, ts2) <- parseExpr0 ts1
---   ts2' <- matchKeywordToken "then" ts2
---   (e2, ts3) <- parseExpr0 ts2'
---   ts3' <- matchKeywordToken "else" ts3
---   (e3, rest) <- parseExpr0 ts3'
---   return (If e1 e2 e3, rest)
--- parseExpr0 (KeywordToken _ _ "let" : ts1) = do
---   (localDefs, ts2) <- parseLocalDefinitions ts1
---   ts2' <- matchKeywordToken "in" ts2
---   (expr, rest) <- parseExpr0 ts2'
---   return (Let localDefs expr, rest)
--- parseExpr0 ts = parseExpr1 ts
 
 -- Parse definitions
 parseDefinition :: [Token] -> Either ParseError (Definition, [Token])

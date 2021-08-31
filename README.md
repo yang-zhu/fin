@@ -8,7 +8,12 @@ The implementation consists of four parts.
 - [`Lexer.hs`](frontend/src/Lexer.hs) tokenizes the input program into tokens. A variable name can contain letters, numbers and underscores, but it has to start with a letter.
 - [`Parser.hs`](frontend/src/Parser.hs) implements a recursive descent parser using the following LL(1) grammar:
 ```
-AtomicExpression ::= Variable | Literal | ( Expression0 )
+LocalDefinitions ::= LocalDefinition {; LocalDefinition}
+LocalDefinition ::= Variable {Variable} = Expression1
+AtomicExpression ::= Variable | Literal | ( Expression1 )
+                   | \ {Variable} . Expression1
+                   | if Expression1 then Expression1 else Expression1
+                   | let LocalDefinitions in Expression1
 Expression8 ::= AtomicExpression {AtomicExpression}
 Expression7 ::= [-] Expression8
 Expression6 ::= Expression7 RestExpression6
@@ -16,17 +21,12 @@ RestExpression6 ::= / Expression7 | {* Expression7}
 Expression5 ::= Expression6 RestExpression5
 RestExpression5 ::= - Expression6 | {+ Expression6}
 Expression4 ::= Expression5 [== Expression5] | Expression5 [< Expression5]
-Expression3 := [not] Expression4
-Expression2 := Expression3 [& Expression2]
-Expression1 := Expression2 [| Expression1]
-Expression0 := if Expression0 then Expression0 else Expression0
-             | let LocalDefinitions in Expression0
-             | Expression1
-LocalDefinitions := LocalDefinition {; LocalDefinition}
-LocalDefinition := Variable = Expression0
+Expression3 ::= [not] Expression4
+Expression2 ::= Expression3 [& Expression2]
+Expression1 ::= Expression2 [| Expression1]
 
-Definition := Variable {Variable} = Expression0
-Program := Definition ; {Definition ;} 
+Definition ::= Variable {Variable} = Expression1
+Program ::= Definition ; {Definition ;} 
 ```
 - [`FCompiler.hs`](frontend/src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
 - [`MF.hs`](frontend/src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.
