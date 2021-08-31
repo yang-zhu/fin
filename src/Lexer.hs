@@ -25,7 +25,7 @@ getTokenPos (NameToken ln col _) = (ln, col)
 getTokenPos (KeywordToken ln col _) = (ln, col)
 
 symbols :: [Char]
-symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';']
+symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';', '\\', '.']
 
 keywords :: [[Char]]
 keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
@@ -74,4 +74,4 @@ tokenizeCharsWithPos ((ln, col, c) : cs)
   | otherwise = Left $ "Invalid input " ++ show c ++ " at position " ++ show (ln, col) ++ "."
 
 tokenize :: String -> Either LexerError [Token]
-tokenize s = tokenizeCharsWithPos $ addCharPositions s 0 0
+tokenize s = tokenizeCharsWithPos $ addCharPositions s 1 1
