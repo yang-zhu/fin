@@ -77,13 +77,16 @@ isNameToken _ = False
 
 -- Parse local definitions
 parseLocalDefinitions :: [Token] -> Either ParseError ([LocalDefinition], [Token])
-parseLocalDefinitions (NameToken _ _ t : KeywordToken _ _ "=" : ts1) = do
-  (e, ts2) <- parseExpr1 ts1
-  case ts2 of
-    KeywordToken _ _ ";" : ts3 -> do
-      (ldefs, rest) <- parseLocalDefinitions ts3
-      return (LocalDef t e : ldefs, rest)
-    ts2 -> return ([LocalDef t e], ts2)
+parseLocalDefinitions (NameToken _ _ t : ts1) = do
+  let (vs, ts2) = span isNameToken ts1
+  ts3 <- matchKeywordToken "=" ts2
+  (e, ts4) <- parseExpr1 ts3
+  let lDef = if null vs then LocalDef t e else LocalDef t (Lambda [v | NameToken _ _ v <- vs] e)
+  case ts4 of
+    KeywordToken _ _ ";" : ts5 -> do
+      (lDefs, rest) <- parseLocalDefinitions ts5
+      return (lDef : lDefs, rest)
+    ts4 -> return ([lDef], ts4)
 parseLocalDefinitions (t : _) = Left $ "Expected local definition, but found token " ++ tokenToStr t ++ " at position " ++ show (getTokenPos t) ++ "."
 parseLocalDefinitions [] = Left "Expected local definition, but found end of input."
 
