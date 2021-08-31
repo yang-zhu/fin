@@ -52,7 +52,7 @@ data HeapCell
   | UNINIT
 
 data MachineState = MachineState
-  { pc :: Int,
+  { pc :: CodeAddr,
     code :: Seq Instruction,
     stack :: [HeapAddr],
     returnStack :: [CodeAddr],

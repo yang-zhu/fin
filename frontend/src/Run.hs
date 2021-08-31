@@ -21,7 +21,7 @@ data Options = Options
 run :: String -> Value
 run s = case tokenize s of
   Right tokens -> case parseProgram tokens of
-    Right program -> case runMF $ translateProgram program of
+    Right program -> case runMF $ translateProgram $ lambdaLiftProg program of
       Right machinestates ->
         let MachineState {stack, heap} = last machinestates
             hCell = head stack
@@ -123,8 +123,8 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
       (if lexOpt then titleStyling "Tokens" ++ List.intercalate "\n" (map show tokens) ++ "\n\n" else "")
         ++ case parseProgram tokens of
           Right program ->
-            (if parseOpt then titleStyling "Parse Result" ++ List.intercalate "\n" (map show program) ++ "\n\n" else "")
-              ++ let ms = translateProgram program
+            (if parseOpt then titleStyling "Parse Result" ++ List.intercalate "\n" (map show (lambdaLiftProg program)) ++ "\n\n" else "")
+              ++ let ms = translateProgram (lambdaLiftProg program)
                   in (if codeOpt then titleStyling "Instructions" ++ showCode ms ++ "\n\n" else "")
                        ++ case runMF ms of
                          Right machinestates ->

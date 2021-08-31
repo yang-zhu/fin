@@ -60,6 +60,7 @@ translateExpr (Var v) pos =
   case lookup v pos of
     Just i -> [Pushparam i]
     Nothing -> [Pushfun v]
+translateExpr _ _ = []  -- unreachable, just to silence the warning 
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
