@@ -2,7 +2,7 @@ module FInterface where
 
 import qualified Data.Sequence as Seq
 import Lexer (tokenize)
-import Parser (parseProgram)
+import Parser (parseProgram, lambdaLiftProg)
 import FCompiler (translateProgram)
 import MF hiding (Value (..))
 import qualified MF
@@ -24,7 +24,7 @@ fromValue (Integer value) = MF.IntValue value
 emulate :: String -> Either String [MachineState]
 emulate s = case tokenize s of
   Right tokens -> case parseProgram tokens of
-    Right program -> case runMF $ translateProgram program of
+    Right program -> case runMF $ translateProgram $ lambdaLiftProg program of
       Right machinestates -> Right machinestates
       Left (err, _) -> Left $ "Runtime error: " ++ err
     Left err -> Left $ "Syntax error: " ++ err
