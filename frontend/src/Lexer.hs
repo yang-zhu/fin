@@ -14,6 +14,12 @@ instance Show Token where
   show (NameToken _ _ t) = "NameToken " ++ show t
   show (KeywordToken _ _ t) = "KeywordToken " ++ show t
 
+instance Eq Token where
+  (NumberToken _ _ t1) == (NumberToken _ _ t2) = t1 == t2
+  (NameToken _ _ t1) == (NameToken _ _ t2) = t1 == t2
+  (KeywordToken _ _ t1) == (KeywordToken _ _ t2) = t1 == t2
+  _ == _ = False
+
 tokenToStr :: Token -> String
 tokenToStr (NumberToken _ _ t) = show t
 tokenToStr (NameToken _ _ t) = show t
@@ -27,7 +33,7 @@ getTokenPos (KeywordToken ln col _) = (ln, col)
 symbols :: [Char]
 symbols = ['(', ')', '&', '|', '<', '+', '-', '*', '/', ';', '\\', '.']
 
-keywords :: [[Char]]
+keywords :: [String]
 keywords = ["let", "in", "if", "then", "else", "not", "true", "false"]
 
 -- Add position to each character
