@@ -9,6 +9,11 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Parser
 
+(!?) :: [a] -> Int -> Maybe a
+l !? i
+  | i < length l = Just (l !! i)
+  | otherwise = Nothing
+
 data Value
   = IntValue Integer
   | BoolValue Bool
@@ -137,10 +142,12 @@ execInstruction (Pushfun f) ms@MachineState {stack, global} =
     Nothing -> Left $ "Function " ++ f ++ " not found."
 execInstruction (Pushval v) ms = return $ allocate ms (VAL v)
 execInstruction (Pushparam n) ms@MachineState {stack, heap} =
-  case heap `Seq.index` (stack !! n) of
-    -- a parameter of a function is the right child of an APP-node
-    APP _ arg2 -> return ms {stack = arg2 : stack}
-    cell -> Left $ "Pushparam expected an APP-cell, but found " ++ show cell ++ "."
+  case stack !? n of
+    Just appAddr -> case heap `Seq.index` appAddr of
+      -- a parameter of a function is the right child of an APP-node
+      APP _ arg2 -> return ms {stack = arg2 : stack}
+      cell -> Left $ "Pushparam expected an APP-cell, but found " ++ show cell ++ "."
+    Nothing -> Left "Stack access out of bounds."
 execInstruction Makeapp ms@MachineState {stack = first : second : _} =
   let
     -- !!! First allocate, then delete the first and second cells, otherwise the heap cells at first and second and the cells they point to won't be taken into account by the garbarge collector. 
@@ -200,7 +207,10 @@ execInstruction Operator2 ms@MachineState {stack = sndOperand : fstOperand : opA
     (Minus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " - " ++ show v2 ++ "."
     (Times, IntValue x1, IntValue x2) -> Right $ IntValue (x1 * x2)
     (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
-    (Divide, IntValue x1, IntValue x2) -> Right $ IntValue (x1 `div` x2)
+    (Divide, IntValue x1, IntValue x2) ->
+      if x2 /= 0
+        then Right $ IntValue (x1 `div` x2)
+        else Left "Division by 0."
     (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
   return $ allocate ms {stack = opAddr : cells} (VAL evalOpExpr)
   where
@@ -226,9 +236,12 @@ execInstruction Update ms@MachineState {stack = res : cells@(topApp : _), heap} 
     }
 -- replace the right child of the dummy APP-node with its expression graph and pop the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState {stack = res : cells, heap} = do
-  replaced <- case heap `Seq.index` (cells !! n) of  -- cells !! n: the heap cell of the right hand side expression
-    APP _ replaced -> Right replaced
-    cell -> Left $ "Expected an APP-cell, but found " ++ show cell ++ "."
+  -- cells !? n: the heap cell of the right hand side expression
+  replaced <- case cells !? n of
+    Just rightChild -> case heap `Seq.index` rightChild of
+      APP _ replaced -> Right replaced
+      cell -> Left $ "Expected an APP-cell, but found " ++ show cell ++ "."
+    Nothing -> Left "Stack access out of bounds."
   return ms
     { stack = cells,
       heap = Seq.update replaced (heap `Seq.index` res) heap
