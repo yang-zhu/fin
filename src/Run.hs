@@ -7,7 +7,6 @@ import Data.Foldable (toList)
 import Data.Tuple (swap)
 import System.Environment (getArgs)
 import Control.Monad (when)
-import System.Console.Pretty (Color(..), Style(..), color, style)
 import System.Exit (exitFailure)
 import Lexer
 import Parser
@@ -131,7 +130,7 @@ traceMF (m1 : m2 : ms) =
 -- Make a title bold and add a frame around it
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
-                 "| " ++ style Bold s ++ " |\n" ++
+                 "| " ++ s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
 -- Check if the command line arguments are valid. If not, give help information.
@@ -140,7 +139,7 @@ checkArgs [] = return ()
 checkArgs (arg : args)
   | arg `elem` flags = checkArgs args
   | otherwise = do
-    putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
+    putStrLn $ "Invalid option " ++ show arg ++ "\n"
                ++ "Possible options: " ++ List.intercalate ", " flags
     exitFailure
     where
@@ -152,8 +151,8 @@ asciiLogo = "       _____  _\n" ++
             "      |  ___|(_) _ __\n" ++
             "      | |_   | || '_ \\\n" ++
             "      |  _|  | || | | |\n" ++
-            color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
-            color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            "~~~~~~" ++ "|_|" ++ "~~~~" ++ "|_||_| |_|" ++ "~~~~~~" ++ "\n" ++
+            "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 runFin :: Options -> String -> String
 runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
@@ -172,9 +171,9 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                                     HeapAddr hCell = head stack
                                     VAL res = value hCell heap
                                  in ">>> Result: " ++ show res
-                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
-          Left err -> color Red "Syntax error: " ++ err
-    Left err -> color Red "Lexical error: " ++ err
+                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ "Runtime error: " ++ err
+          Left err -> "Syntax error: " ++ err
+    Left err -> "Lexical error: " ++ err
 
 main :: IO ()
 main =
@@ -182,7 +181,7 @@ main =
     args <- getArgs
     checkArgs args
     putStrLn asciiLogo
-    putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
+    putStrLn $ "Please enter the F program here" ++ " (end with an empty line)" ++ ":"
     input <- multiline
     putStrLn $ runFin Options{lexOpt="-lex" `elem` args,
                               parseOpt="-parse" `elem` args,

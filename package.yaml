@@ -14,7 +14,6 @@ library:
   source-dirs: src
   dependencies:
   - containers
-  - pretty-terminal
   default-extensions:
   - NamedFieldPuns  # https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
 
