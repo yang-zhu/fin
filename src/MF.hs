@@ -32,7 +32,7 @@ data Instruction
   | Alloc
   | SlideLet Int
   | Halt
-  deriving (Eq, Show)
+  deriving (Eq)
 
 type CodeAddr = Int
 
@@ -46,7 +46,7 @@ data Operator
   = UnOp UnaryOp
   | BinOp BinaryOp
   | IfOp
-  deriving (Eq, Show)
+  deriving Eq
 
 data HeapCell
   = DEF String Int CodeAddr
@@ -67,6 +67,43 @@ data MachineState = MachineState
 
 type MFError = String
 
+instance Show Operator where
+  show (UnOp uo) = case uo of
+    Not -> "not"
+    Neg -> "(unary -)"
+  show (BinOp bo) = case bo of
+    Equal -> "=="
+    Smaller -> "<"
+    Plus -> "+"
+    Minus -> "(binary -)"
+    Times -> "*"
+    Divide -> "/"
+  show IfOp = "if"
+
+instance Show Instruction where
+  show i = case i of
+    Reset -> "Reset"
+    Pushfun s -> "Pushfun " ++ s
+    Pushval va -> "Pushval " ++ case va of
+      IntValue i -> "Integer " ++ show i
+      BoolValue b -> "Bool " ++ show b
+    Pushparam n -> "Pushparam " ++ show n
+    Makeapp -> "Makeapp"
+    Slide n -> "Slide " ++ show n
+    Unwind -> "Unwind"
+    Call -> "Call"
+    Return -> "Return"
+    Pushpre op -> "Pushpre " ++ show op
+    Operator1 -> "Operator 1"
+    Operator2 -> "Operator 2"
+    OperatorIf -> "Operator if"
+    UpdateFun n -> "Update " ++ show n
+    UpdateOp -> "Update op"
+    UpdateLet n -> "UpdateLet " ++ show n
+    Alloc -> "Alloc"
+    SlideLet n -> "SlideLet " ++ show n
+    Halt -> "Halt"
+
 instance Show Value where
   show (IntValue x) = show x
   show (BoolValue b) = show b
@@ -80,7 +117,10 @@ instance Show HeapCell where
   show (VAL (IntValue x)) = "VAL Integer " ++ show x
   show (VAL (BoolValue b)) = "VAL Bool " ++ show b
   show (APP ha1 ha2) = "APP h" ++ show ha1 ++ " h" ++ show ha2
-  show (PRE op) = "PRE (" ++ show op ++ ")"
+  show (PRE op) = "PRE " ++ show op ++ case op of
+     UnOp _ -> " 1"
+     BinOp _ -> " 2"
+     IfOp -> " 3"
   show (IND ha) = "IND h" ++ show ha
   show UNINIT = "UNINITIALIZED"
 
