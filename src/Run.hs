@@ -170,7 +170,7 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                            (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
                              ++ let MachineState {stack, heap} = last machinestates
                                     HeapAddr hCell = head stack
-                                    VAL res = heap `index` hCell
+                                    VAL res = value hCell heap
                                  in ">>> Result: " ++ show res
                          Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ color Red "Runtime error: " ++ err
           Left err -> color Red "Syntax error: " ++ err
