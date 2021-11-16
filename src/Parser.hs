@@ -46,17 +46,17 @@ type ParseError = String
 -- Expression5 ::= Expression6 RestExpression5
 -- RestExpression5 ::= - Expression6 | {+ Expression6}
 -- Expression4 ::= Expression5 [== Expression5] | Expression5 [< Expression5]
--- Expression3 := [not] Expression4
--- Expression2 := Expression3 [& Expression2]
--- Expression1 := Expression2 [| Expression1]
--- Expression0 := if Expression0 then Expression0 else Expression0
---              | let LocalDefinitions in Expression0
---              | Expression1
--- LocalDefinitions := LocalDefinition {; LocalDefinition}
--- LocalDefinition := Variable = Expression0
+-- Expression3 ::= [not] Expression4
+-- Expression2 ::= Expression3 [& Expression2]
+-- Expression1 ::= Expression2 [| Expression1]
+-- Expression0 ::= if Expression0 then Expression0 else Expression0
+--               | let LocalDefinitions in Expression0
+--               | Expression1
+-- LocalDefinitions ::= LocalDefinition {; LocalDefinition}
+-- LocalDefinition ::= Variable = Expression0
 
--- Definition := Variable {Variable} = Expression0
--- Program := Definition ; {Definition ;}
+-- Definition ::= Variable {Variable} = Expression0
+-- Program ::= Definition ; {Definition ;}
 
 -- Check if the head of the token list matches the expected token. If it matches, consume the token; Otherwise output an error message
 matchKeywordToken :: String -> [Token] -> Either ParseError [Token]
@@ -89,49 +89,49 @@ isExprStart (NumberToken _ _ _) = True
 isExprStart (NameToken _ _ _) = True
 
 parseManyAtomicExpr :: [Token] -> Either ParseError ([Expression], [Token])
-parseManyAtomicExpr [] = return ([], [])
+parseManyAtomicExpr [] = return ([], [])  -- end of input
 parseManyAtomicExpr ts@(t : _) =
   if isExprStart t
     then do
       (e, ts') <- parseAtomicExpr ts
       (es, rest) <- parseManyAtomicExpr ts'
       return (e : es, rest)
-    else return ([], ts)
+    else return ([], ts)  -- base case but there are still unprocessed tokens
 
 -- Parse function applications
 parseExpr8 :: [Token] -> Either ParseError (Expression, [Token])
 parseExpr8 ts = do
   (es, ts') <- parseManyAtomicExpr ts
   case (es, ts') of
-    (e : es, ts') -> return (foldl FuncApp e es, ts')
+    (e : es, ts') -> return (foldl FuncApp e es, ts')  -- return e when es is empty, foldl makes sure that function application is left-associative
     ([], []) -> Left "Expected expression, but found end of input."
     ([], t : _) -> Left $ "Expected expression, but found token " ++ tokenToStr t ++ " at position " ++ show (getTokenPos t) ++ "."
 
--- Parse unary minus
-parseExpr7 :: [Token] -> Either ParseError (Expression, [Token])
-parseExpr7 (KeywordToken _ _ "-" : ts) = do
-  (e, rest) <- parseExpr8 ts
-  return (Unary Neg e, rest)
-parseExpr7 ts = parseExpr8 ts
-
 parseMultiplications :: [Token] -> Either ParseError ([Expression], [Token])
 parseMultiplications (KeywordToken _ _ "*" : ts) = do
-  (e, ts') <- parseExpr7 ts
+  (e, ts') <- parseExpr8 ts
   (es, rest) <- parseMultiplications ts'
   return (e : es, rest)
 parseMultiplications ts = return ([], ts)
 
 -- Parse * and / operators
-parseExpr6 :: [Token] -> Either ParseError (Expression, [Token])
-parseExpr6 ts = do
-  (e, ts') <- parseExpr7 ts
+parseExpr7 :: [Token] -> Either ParseError (Expression, [Token])
+parseExpr7 ts = do
+  (e, ts') <- parseExpr8 ts
   case ts' of
     (KeywordToken _ _ "/" : ts') -> do
-      (divisor, rest) <- parseExpr7 ts'
+      (divisor, rest) <- parseExpr8 ts'
       return (Binary e Divide divisor, rest)
     _ -> do
       (es, rest) <- parseMultiplications ts'
-      return (foldl (\x y -> Binary x Times y) e es, rest)
+      return (foldl (\x y -> Binary x Times y) e es, rest)  -- foldl -> multiplication left-associative
+
+-- Parse unary minus
+parseExpr6 :: [Token] -> Either ParseError (Expression, [Token])
+parseExpr6 (KeywordToken _ _ "-" : ts) = do
+  (e, rest) <- parseExpr7 ts  -- parseExpr8 can't handle another "-" -> parse error
+  return (Unary Neg e, rest)
+parseExpr6 ts = parseExpr7 ts
 
 parseAdditions :: [Token] -> Either ParseError ([Expression], [Token])
 parseAdditions (KeywordToken _ _ "+" : ts) = do

@@ -74,4 +74,4 @@ tokenizeCharsWithPos ((ln, col, c) : cs)
   | otherwise = Left $ "Invalid input " ++ show c ++ " at position " ++ show (ln, col) ++ "."
 
 tokenize :: String -> Either LexerError [Token]
-tokenize s = tokenizeCharsWithPos $ addCharPositions s 0 0
+tokenize s = tokenizeCharsWithPos $ addCharPositions s 1 1

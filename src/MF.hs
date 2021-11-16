@@ -5,8 +5,6 @@ import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
 import qualified Data.List as List
 import Data.Maybe (catMaybes)
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Parser
 
 data Value
@@ -51,7 +49,7 @@ data Operator
   deriving (Eq, Show)
 
 data HeapCell
-  = DEF CodeAddr
+  = DEF String Int CodeAddr
   | VAL Value
   | APP HeapAddr HeapAddr
   | PRE Operator
@@ -59,7 +57,7 @@ data HeapCell
   | UNINIT
 
 data MachineState = MachineState
-  { pc :: Int,
+  { pc :: CodeAddr,
     code :: Seq Instruction,
     stack :: [StackCell],
     heap :: Seq HeapCell,
@@ -78,7 +76,7 @@ instance Show StackCell where
   show (HeapAddr ha) = "h" ++ show ha
 
 instance Show HeapCell where
-  show (DEF ca) = "DEF c" ++ show ca
+  show (DEF name arity ca) = "DEF " ++ name ++ " " ++ show arity ++ " c" ++ show ca
   show (VAL (IntValue x)) = "VAL Integer " ++ show x
   show (VAL (BoolValue b)) = "VAL Bool " ++ show b
   show (APP ha1 ha2) = "APP h" ++ show ha1 ++ " h" ++ show ha2
@@ -161,7 +159,7 @@ execInstruction Unwind ms@MachineState {pc, stack = stack@(HeapAddr top : _), he
     _ -> return ms
 execInstruction Call ms@MachineState {pc, stack = stack@(HeapAddr top : _), heap} =
   case value top heap of
-    DEF addr -> return ms {pc = addr, stack = CodeAddr pc : stack}
+    DEF _ _ addr -> return ms {pc = addr, stack = CodeAddr pc : stack}
     PRE (UnOp _) -> return ms {pc = 21, stack = CodeAddr pc : stack}
     PRE (BinOp _) -> return ms {pc = 4, stack = CodeAddr pc : stack}
     PRE IfOp -> return ms {pc = 13, stack = CodeAddr pc : stack}
@@ -193,7 +191,7 @@ execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapA
   where
     PRE (UnOp op) = value opAddr heap
 execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap} = do
-  -- v1 and v2 could either be intergers or truth values
+  -- v1 and v2 could either be integers or truth values
   v1 <- case value fstOperand heap of
     VAL v1 -> Right v1
     x -> Left $ "Expected a value, but found " ++ show x ++ "."

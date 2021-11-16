@@ -5,15 +5,19 @@ import qualified Data.Sequence as Seq
 import qualified Data.List as List
 import Data.Foldable (toList)
 import Data.Tuple (swap)
-import System.Environment (getArgs)
-import Control.Monad (when)
-import System.Console.Pretty (Color(..), Style(..), color, style)
-import System.Exit (exitFailure)
-import Control.Exception (catch, IOException)
 import Lexer
 import Parser
 import FCompiler
 import MF
+
+data Options =
+  Options {
+    lexOpt :: Bool,
+    parseOpt :: Bool,
+    codeOpt :: Bool,
+    stepOpt :: Bool,
+    traceOpt :: Bool
+  }
 
 run :: String -> Value
 run s = case tokenize s of
@@ -50,7 +54,7 @@ showStack :: MachineState -> [String]
 showStack MachineState {stack, codeRange} = map showStackCell cellWithAddrs
   where
     cellWithAddrs :: [(Int, StackCell)]
-    cellWithAddrs = zip [0 ..] stack
+    cellWithAddrs = zip [0 ..] (reverse stack)
 
     -- add function names to stack cells that contain code addresses
     showStackCell :: (Int, StackCell) -> String
@@ -109,89 +113,32 @@ traceMF [] = ""
 traceMF [_] = ""
 traceMF (m1 : m2 : ms) =
   let mergeSH = mergeBlocks (showStack m2) (showHeap m2)
-      mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "P: c" ++ show (pc m2)] mergeSH
+      mergeAll = mergeBlocks ["I: " ++ show (code m1 `Seq.index` pc m1), "T: " ++ show (length (stack m2) - 1), "P: c" ++ show (pc m2)] mergeSH
    in List.intercalate "\n" mergeAll ++ "\n\n" ++ traceMF (m2 : ms)
 
 -- Make a title bold and add a frame around it
 titleStyling :: String -> String
 titleStyling s = "+" ++ replicate (length s + 2) '-' ++ "+\n" ++
-                 "| " ++ style Bold s ++ " |\n" ++
+                 "| " ++ s ++ " |\n" ++
                  "+" ++ replicate (length s + 2) '-' ++ "+\n"
 
--- Take in multi-line input until empty line
-multiline :: IO String
-multiline = do
-  s <- getLine
-  case s of
-    "" -> return s
-    _ -> ((s ++ "\n") ++) <$> multiline
-
--- Check if the command line arguments are valid. Otherwise give help information. Return the file path if only one is provided.
-checkArgs :: [String] -> IO (Maybe String)
-checkArgs [] = return Nothing
-checkArgs (arg@('-' : _) : args)
-  | arg `elem` flags = checkArgs args
-  | otherwise = do
-    putStrLn $ color Red ("Invalid option " ++ show arg) ++ "\n"
-               ++ "Possible options: " ++ List.intercalate ", " flags
-    exitFailure
-    where
-      flags = ["-lex", "-parse", "-code", "-step", "-trace"]
-checkArgs (path : args) = do
-  otherPath <- checkArgs args
-  case otherPath of
-    Just _ -> do
-      putStrLn $ color Red "Invalid arguments: " ++ "Only one file path is allowed."
-      exitFailure
-    Nothing -> return (Just path)
-
--- The logo "Fin" in ASCII art
-asciiLogo :: String
-asciiLogo = "       _____  _\n" ++
-            "      |  ___|(_) _ __\n" ++
-            "      | |_   | || '_ \\\n" ++
-            "      |  _|  | || | | |\n" ++
-            color Blue "~~~~~~" ++ "|_|" ++ color Blue "~~~~" ++ "|_||_| |_|" ++ color Blue "~~~~~~" ++ "\n" ++
-            color Blue "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
-main :: IO ()
-main = do
-  args <- getArgs
-  maybePath <- checkArgs args
-  input <- case maybePath of
-    Just path -> catch (readFile path)
-        (\e -> do
-          let _ = (e :: IOException)
-          putStrLn $ color Red "Error:" ++ " Couldn't open file " ++ show path
-          exitFailure)
-    Nothing -> do
-      putStrLn asciiLogo
-      putStrLn $ style Bold "Please enter the F program here" ++ " (end with an empty line)" ++ style Bold ":"
-      multiline
+runFin :: Options -> String -> String
+runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
   case tokenize input of
-    Right tokens -> do
-      -- when the flag "-lex" is enabled
-      when ("-lex" `elem` args) (putStrLn $ titleStyling "Tokens" ++ List.intercalate "\n" (map show tokens) ++ "\n")
-      case parseProgram tokens of
-        Right program -> do
-          -- when the flag "-parse" is enabled
-          when ("-parse" `elem` args) (putStrLn $ titleStyling "Parse Result" ++ List.intercalate "\n" (map show program) ++ "\n")
-          let ms = translateProgram program
-          -- when the flag "-code" is enabled
-          when ("-code" `elem` args) (putStrLn $ titleStyling "Instructions" ++ showCode ms ++ "\n")
-          case runMF ms of
-            Right machinestates -> do
-              -- when the flag "-step" is enabled
-              when ("-step" `elem` args) (putStr $ titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n")
-              -- when the flag "-trace" is enabled
-              when ("-trace" `elem` args) (putStr $ titleStyling "Execution Trace" ++ traceMF machinestates)
-              let MachineState {stack, heap} = last machinestates
-              let HeapAddr hCell = head stack
-              let VAL res = value hCell heap
-              putStrLn $ ">>> Result: " ++ show res
-            Left (err, machinestates) -> do
-              -- still print the trace when there is an error
-              when ("-trace" `elem` args) (putStr $ traceMF machinestates)
-              putStrLn $ color Red "Runtime error: " ++ err
-        Left err -> putStrLn $ color Red "Syntax error: " ++ err
-    Left err -> putStrLn $ color Red "Lexical error: " ++ err
+    Right tokens ->
+      (if lexOpt then titleStyling "Tokens" ++ List.intercalate "\n" (map show tokens) ++ "\n\n" else "")
+        ++ case parseProgram tokens of
+          Right program ->
+            (if parseOpt then titleStyling "Parse Result" ++ List.intercalate "\n" (map show program) ++ "\n\n" else "")
+              ++ let ms = translateProgram program
+                  in (if codeOpt then titleStyling "Instructions" ++ showCode ms ++ "\n\n" else "")
+                       ++ case runMF ms of
+                         Right machinestates ->
+                           (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
+                             ++ let MachineState {stack, heap} = last machinestates
+                                    HeapAddr hCell = head stack
+                                    VAL res = value hCell heap
+                                 in ">>> Result: " ++ show res
+                         Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ "Runtime error: " ++ err
+          Left err -> "Syntax error: " ++ err
+    Left err -> "Lexical error: " ++ err

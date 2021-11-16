@@ -63,12 +63,12 @@ translateExpr (Var v) pos =
 
 -- Add one definition to the initial machine state
 add1Definition :: MachineState -> Definition -> MachineState
-add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f _ _) =
+add1Definition ms@MachineState {code, heap, global, codeRange} d@(Definition f args _) =
   ms
     { code = code',
-      heap = heap |> DEF (length code),
-      global = Map.insert f (length heap) global,
-      codeRange = ((length code, length code' - 1), f) : codeRange
+      heap = heap |> DEF f (length args) (Seq.length code),
+      global = Map.insert f (Seq.length heap) global,
+      codeRange = ((Seq.length code, Seq.length code' - 1), f) : codeRange
     }
   where
     code' = code >< Seq.fromList (translateDef d)
@@ -102,9 +102,9 @@ translateProgram =
             Unwind,
             Call,
             OperatorIf,
+            UpdateOp,
             Unwind,
             Call,
-            UpdateOp,
             Return,
             -- unary operators
             Pushparam 1,
