@@ -16,6 +16,7 @@ import Test.Hspec.Runner
 import Test.Hspec.Formatters (progress)
 import Data.Text (Text)
 import Text.RawString.QQ (r)
+import Data.Either (isLeft)
 
 spec :: Spec
 spec = do
@@ -72,8 +73,8 @@ spec = do
       eval "main = 4 + -2;" `shouldBe` Right (Integer 2)
     it "works as a first factor" $
       eval "main = -2 * 4;" `shouldBe` Right (Integer (-8))
-    -- it "does not work as a second factor" $
-    --   eval "main = 4 * -2;" `shouldSatisfy` isLeft
+    it "does not work as a second factor" $
+      eval "main = 4 * -2;" `shouldSatisfy` isLeft
     it "works as a first comparison operand" $
       eval "main = -2 < 4;" `shouldBe` Right (Bool True)
     it "works as a second comparison operand" $
