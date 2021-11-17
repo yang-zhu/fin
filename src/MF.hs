@@ -169,7 +169,7 @@ l !? i
   | otherwise = Nothing
 
 maybeToEither :: Maybe a -> b -> Either b a
-maybeToEither (Just x) error = Right x
+maybeToEither (Just x) _ = Right x
 maybeToEither Nothing error = Left error
 
 -- Specify how each instruction is executed
@@ -224,68 +224,65 @@ execInstruction (Pushpre op) ms@MachineState {stack, heap} =
     { stack = HeapAddr (length heap) : stack,
       heap = heap |> PRE op
     }
-execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapAddr opAddr : cells, heap} = do
-  v <- case value operand heap of
-    VAL v -> Right v
-    x -> Left $ "Expected a value, but found " ++ show x ++ "."
-  evalOpExpr <- case (op, v) of
-    (Not, BoolValue b) -> Right $ BoolValue (not b)
-    (Neg, IntValue x) -> Right $ IntValue (negate x)
-    (Not, _) -> Left $ "Expected a truth value, but found " ++ show v ++ "."
-    (Neg, _) -> Left $ "Expected a number, but found " ++ show v ++ "."
-  return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell is removed
-      stack = HeapAddr (length heap) : ra : cells,
-      heap = heap |> VAL evalOpExpr
-    }
-  where
-    PRE (UnOp op) = value opAddr heap
-execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap} = do
-  -- v1 and v2 could either be integers or truth values
-  v1 <- case value fstOperand heap of
-    VAL v1 -> Right v1
-    x -> Left $ "Expected a value, but found " ++ show x ++ "."
-  v2 <- case value sndOperand heap of
-    VAL v2 -> Right v2
-    x -> Left $ "Expected a value, but found " ++ show x ++ "."
-  evalOpExpr <- case (op, v1, v2) of
-    (Equal, IntValue x1, IntValue x2) -> Right $ BoolValue (x1 == x2)
-    (Equal, BoolValue b1, BoolValue b2) -> Right $ BoolValue (b1 == b2)
-    (Equal, _, _) -> Right $ BoolValue False -- allow equality check between values of different types
-    (Smaller, IntValue x1, IntValue x2) -> Right $ BoolValue (x1 < x2)
-    (Smaller, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " < " ++ show v2 ++ "."
-    (Plus, IntValue x1, IntValue x2) -> Right $ IntValue (x1 + x2)
-    (Plus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " + " ++ show v2 ++ "."
-    (Minus, IntValue x1, IntValue x2) -> Right $ IntValue (x1 - x2)
-    (Minus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " - " ++ show v2 ++ "."
-    (Times, IntValue x1, IntValue x2) -> Right $ IntValue (x1 * x2)
-    (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
-    (Divide, IntValue x1, IntValue x2) ->
-      if x2 /= 0
-        then Right $ IntValue (x1 `div` x2)
-        else Left "Division by 0."
-    (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
-  return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed
-      stack = HeapAddr (length heap) : ra : drop 1 cells,
-      heap = heap |> VAL evalOpExpr
-    }
-  where
-    PRE (BinOp op) = value opAddr heap
-execInstruction OperatorIf ms@MachineState {stack = HeapAddr condition : ra : _ : _ : HeapAddr thenAddr : HeapAddr elseAddr : cells, heap} = do
-  cond <- case value condition heap of
-    VAL (BoolValue cond) -> Right cond
-    x -> Left $ "Expected a truth value, but found " ++ show x ++ "."
-  return ms
-    { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower two APP-nodes are removed
-      stack =
-        if cond
-          then HeapAddr thenBranch : ra : HeapAddr elseAddr : cells
-          else HeapAddr elseBranch : ra : HeapAddr elseAddr : cells
-    }
-  where
-    APP _ thenBranch = value thenAddr heap
-    APP _ elseBranch = value elseAddr heap
+execInstruction Operator1 ms@MachineState {stack = HeapAddr operand : ra : HeapAddr opAddr : cells, heap}
+  | PRE (UnOp op) <- value opAddr heap = do
+    v <- case value operand heap of
+      VAL v -> Right v
+      x -> Left $ "Expected a value, but found " ++ show x ++ "."
+    evalOpExpr <- case (op, v) of
+      (Not, BoolValue b) -> Right $ BoolValue (not b)
+      (Neg, IntValue x) -> Right $ IntValue (negate x)
+      (Not, _) -> Left $ "Expected a truth value, but found " ++ show v ++ "."
+      (Neg, _) -> Left $ "Expected a number, but found " ++ show v ++ "."
+    return ms
+      { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell is removed
+        stack = HeapAddr (length heap) : ra : cells,
+        heap = heap |> VAL evalOpExpr
+      }
+execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAddr fstOperand : ra : HeapAddr opAddr : cells, heap}
+  | PRE (BinOp op) <- value opAddr heap = do
+    -- v1 and v2 could either be integers or truth values
+    v1 <- case value fstOperand heap of
+      VAL v1 -> Right v1
+      x -> Left $ "Expected a value, but found " ++ show x ++ "."
+    v2 <- case value sndOperand heap of
+      VAL v2 -> Right v2
+      x -> Left $ "Expected a value, but found " ++ show x ++ "."
+    evalOpExpr <- case (op, v1, v2) of
+      (Equal, IntValue x1, IntValue x2) -> Right $ BoolValue (x1 == x2)
+      (Equal, BoolValue b1, BoolValue b2) -> Right $ BoolValue (b1 == b2)
+      (Equal, _, _) -> Right $ BoolValue False -- allow equality check between values of different types
+      (Smaller, IntValue x1, IntValue x2) -> Right $ BoolValue (x1 < x2)
+      (Smaller, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " < " ++ show v2 ++ "."
+      (Plus, IntValue x1, IntValue x2) -> Right $ IntValue (x1 + x2)
+      (Plus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " + " ++ show v2 ++ "."
+      (Minus, IntValue x1, IntValue x2) -> Right $ IntValue (x1 - x2)
+      (Minus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " - " ++ show v2 ++ "."
+      (Times, IntValue x1, IntValue x2) -> Right $ IntValue (x1 * x2)
+      (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
+      (Divide, IntValue x1, IntValue x2) ->
+        if x2 /= 0
+          then Right $ IntValue (x1 `div` x2)
+          else Left "Division by 0."
+      (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
+    return ms
+      { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed
+        stack = HeapAddr (length heap) : ra : drop 1 cells,
+        heap = heap |> VAL evalOpExpr
+      }
+execInstruction OperatorIf ms@MachineState {stack = HeapAddr condition : ra : _ : _ : HeapAddr thenAddr : HeapAddr elseAddr : cells, heap} 
+  | APP _ thenBranch <- value thenAddr heap,
+    APP _ elseBranch <- value elseAddr heap = do
+    cond <- case value condition heap of
+      VAL (BoolValue cond) -> Right cond
+      x -> Left $ "Expected a truth value, but found " ++ show x ++ "."
+    return ms
+      { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower two APP-nodes are removed
+        stack =
+          if cond
+            then HeapAddr thenBranch : ra : HeapAddr elseAddr : cells
+            else HeapAddr elseBranch : ra : HeapAddr elseAddr : cells
+      }
 -- convert the heap cell that contains the top APP-node of a function application graph into an IND-cell that points at the the result of the function application -> lazy evaluation
 execInstruction (UpdateFun n) ms@MachineState {stack = HeapAddr funBody : stack, heap} =
   case stack !! (n + 1) of -- the heap cell of the top APP-node

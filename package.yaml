@@ -9,6 +9,9 @@ dependencies:
 
 ghc-options:
   - -Wall
+  - -Wincomplete-patterns
+  - -Wincomplete-uni-patterns
+  - -Wno-name-shadowing
 
 default-extensions:
   - NamedFieldPuns  # https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns

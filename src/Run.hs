@@ -25,9 +25,9 @@ run s = case tokenize s of
     Right program -> case runMF $ translateProgram program of
       Right machinestates ->
         let MachineState {stack, heap} = last machinestates
-            HeapAddr hCell = head stack
-            VAL res = heap `Seq.index` hCell
-         in res
+         in case head stack of
+            HeapAddr hCell | VAL res <- value hCell heap -> res
+            _  -> error "The result is not a value. Something went wrong :("
       Left (err, _) -> error $ "Runtime error: " ++ err
     Left err -> error $ "Syntax error: " ++ err
   Left err -> error $ "Lexical error: " ++ err
@@ -104,8 +104,8 @@ mergeBlocks :: [String] -> [String] -> [String]
 mergeBlocks block1 block2 = zipWith (\s1 s2 -> s1 ++ " " ++ s2) paddedBlock1 paddedBlock2
   where
     (block1', block2') = padBlock (block1, block2)
-    paddedBlock1 = padStrings 25 block1'
-    paddedBlock2 = padStrings 25 block2'
+    paddedBlock1 = padStrings 21 block1'
+    paddedBlock2 = padStrings 21 block2'
 
 -- Display the execution trace as in the script
 traceMF :: [MachineState] -> String
@@ -136,9 +136,9 @@ runFin Options {lexOpt, parseOpt, codeOpt, stepOpt, traceOpt} input =
                          Right machinestates ->
                            (if stepOpt then titleStyling "Step Count" ++ "Number of execution steps: " ++ show (length machinestates) ++ "\n\n" else "") ++ (if traceOpt then titleStyling "Execution Trace" ++ traceMF machinestates else "")
                              ++ let MachineState {stack, heap} = last machinestates
-                                    HeapAddr hCell = head stack
-                                    VAL res = value hCell heap
-                                 in ">>> Result: " ++ show res
+                                 in case head stack of
+                                   HeapAddr hCell | VAL res <- value hCell heap -> ">>> Result: " ++ show res
+                                   _  -> "The result is not a value. Something went wrong :("
                          Left (err, machinestates) -> (if traceOpt then traceMF machinestates else "") ++ "Runtime error: " ++ err
           Left err -> "Syntax error: " ++ err
     Left err -> "Lexical error: " ++ err
