@@ -163,6 +163,15 @@ value addr1 heap = case heap `Seq.index` addr1 of
   IND addr2 -> value addr2 heap
   anything -> anything
 
+(!?) :: [a] -> Int -> Maybe a
+l !? i
+  | i < length l = Just (l !! i)
+  | otherwise = Nothing
+
+maybeToEither :: Maybe a -> b -> Either b a
+maybeToEither (Just x) error = Right x
+maybeToEither Nothing error = Left error
+
 -- Specify how each instruction is executed
 execInstruction :: Instruction -> MachineState -> Either MFError MachineState
 execInstruction Reset ms = return ms {stack = []}
@@ -177,9 +186,10 @@ execInstruction (Pushval v) ms@MachineState {stack, heap} =
       stack = HeapAddr (length heap) : stack,
       heap = heap |> VAL v
     }
-execInstruction (Pushparam n) ms@MachineState {stack, heap} =
-  case stack !! (n + 1) of
-    HeapAddr appAddr -> case value appAddr heap of
+execInstruction (Pushparam n) ms@MachineState {stack, heap} = do
+  appAddr <- maybeToEither (stack !? (n + 1)) "Stack access out of bounds."
+  case appAddr of
+    HeapAddr ha -> case value ha heap of
       -- a parameter of a function is the right child of an APP-node
       APP _ arg2 -> return ms {stack = HeapAddr arg2 : stack}
       cell -> Left $ "Pushparam expected an APP-cell, but found " ++ show cell ++ "."
@@ -250,7 +260,10 @@ execInstruction Operator2 ms@MachineState {stack = HeapAddr sndOperand : HeapAdd
     (Minus, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " - " ++ show v2 ++ "."
     (Times, IntValue x1, IntValue x2) -> Right $ IntValue (x1 * x2)
     (Times, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " * " ++ show v2 ++ "."
-    (Divide, IntValue x1, IntValue x2) -> Right $ IntValue (x1 `div` x2)
+    (Divide, IntValue x1, IntValue x2) ->
+      if x2 /= 0
+        then Right $ IntValue (x1 `div` x2)
+        else Left "Division by 0."
     (Divide, _, _) -> Left $ "Expected two numbers, but found " ++ show v1 ++ " / " ++ show v2 ++ "."
   return ms
     { -- the top APP-node of the operator graph is kept temporarily for later UpdateOp, therefore only the PRE-cell and the lower APP-node are removed
@@ -291,10 +304,11 @@ execInstruction UpdateOp ms@MachineState {stack = HeapAddr res : ra : HeapAddr r
     }
 -- replace the right child of the dummy APP-node with its expression graph and pop the expression node from the stack
 execInstruction (UpdateLet n) ms@MachineState {stack = HeapAddr res : cells, heap} = do
-  appAddr <- case cells !! n of -- the heap cell of the right hand side expression
-    HeapAddr appAddr -> Right appAddr
+  appAddr <- maybeToEither (cells !? n) "Stack access out of bounds"
+  ha <- case appAddr of
+    HeapAddr ha -> Right ha
     CodeAddr ca -> Left $ "Expected a heap address, but found code address " ++ show ca ++ "."
-  replaced <- case value appAddr heap of
+  replaced <- case value ha heap of
     APP _ replaced -> Right replaced
     cell -> Left $ "Expected an APP-cell, but found " ++ show cell ++ "."
   return ms
