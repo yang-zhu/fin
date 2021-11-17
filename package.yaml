@@ -10,13 +10,14 @@ dependencies:
 ghc-options:
   - -Wall
 
+default-extensions:
+  - NamedFieldPuns  # https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
+
 library:
   source-dirs: src
   dependencies:
   - containers
   - pretty-terminal
-  default-extensions:
-  - NamedFieldPuns  # https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/record_puns.html#extension-NamedFieldPuns
 
 executables:
   fin-exe:
@@ -30,3 +31,18 @@ executables:
     - fin
     - containers
     - pretty-terminal
+
+tests:
+  fin-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - fin
+    - hspec
+    - text
+    - containers
+    - raw-strings-qq
