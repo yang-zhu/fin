@@ -75,8 +75,8 @@ optionsElement =
   elId "div" "options" $ do
     el "div" (text "Output")
     Options
-      <<$>> checkboxLabelled "lexer result"
-      <<*>> checkboxLabelled "parser result"
+      False
+      <<$>> checkboxLabelled "parser result"
       <<*>> checkboxLabelled "compiler result"
       <<*>> checkboxLabelled "emulation step count"
       <<*>> checkboxLabelled "emulator result"
