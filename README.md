@@ -31,29 +31,26 @@ Program := Definition ; {Definition ;}
 - [`FCompiler.hs`](src/FCompiler.hs) compiles the program and generates the initial machine state to be executed.
 - [`MF.hs`](src/MF.hs) defines the abstract machine MF for F. It executes the MF instructions and delivers the result.
 
-## How to build Fin
+## Build
 
-The project requires [stack](https://docs.haskellstack.org/en/stable/README/).
-After stack is successfully installed, build the project as follows:
+1. Follow step 1 and 2 of https://github.com/obsidiansystems/obelisk/#installing-obelisk. There is no need to perform step 3.
+2. Execute
+
+```shell
+mkdir result
+ln -s $(nix-build -A exe --no-out-link)/* result/
+cp -r config result
+(cd result && ./backend)
 ```
-stack build
-```
 
-## How to run Fin
+as described on https://github.com/obsidiansystems/obelisk#locally.
 
-The project can be run as follows:
-```
-stack run -- [file path] [flags]
-```
-The F program can either be given as a file or as input on the terminal. Only one file path can be provided and only one program is allowed in the file. Regarding giving the program on the terminal, it can be multiple lines and is terminated with an empty line. The F program will be parsed, compiled and run automatically.
+## Develop
 
-The possible flags are: `-lex`, `-parse`, `-code`, `-step` and `-trace`.
+[Install Obelisk](https://github.com/obsidiansystems/obelisk#installing-obelisk). The following options are available.
 
-- `-lex`: Output the tokens.
-- `-parse`: Output the abstract syntax tree.
-- `-code`: Output the compiled MF instructions.
-- `-step`: Output the number of execution steps.
-- `-trace`: Output the trace of the MF execution.
+- Execute `ob run` for a ghcid window. The web server is updated automatically. `-- $>` code comments are supported.
+- Execute `ob repl` for a ghci prompt. Load a module using `:l Run`.
 
 ## Example
 The following F program computes the next prime number after 90.
